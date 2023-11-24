@@ -54,7 +54,7 @@ using namespace std;
 #include "Z80_JLS/z80.h"
 #include "Tape.h"
 
-#define MENU_MAX_ROWS 15 // Was 18 but 15 allows virtual onscreen keyboard OSD work when Config::aspect_16_9  ///////
+#define MENU_MAX_ROWS 14 // Was 18 but 14 allows virtual onscreen keyboard OSD work when Config::aspect_16_9  ///////
 // Line type
 #define IS_TITLE 0
 #define IS_FOCUSED 1

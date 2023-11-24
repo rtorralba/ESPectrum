@@ -1258,6 +1258,15 @@ void PS2Controller::begin(PS2Preset preset, KbdMode keyboardMode)
       (new Mouse)->begin(GPIO_NUM_26, GPIO_NUM_27);
       s_mouseAllocated = true;
       break;
+    case PS2Preset::KeyboardPort0_KeyboardAltPort1: ///////
+      // both keyboard (port 0 and port 1)
+      begin(GPIO_NUM_33, GPIO_NUM_32, GPIO_NUM_16, GPIO_NUM_17); // Pins 16 and 17 are not valid for rtc_gpio_is_valid_gpio checks from PS2Controller::begin ///////
+      setKeyboard(new Keyboard);
+      keyboard()->begin(generateVirtualKeys, createVKQueue, 0);
+      setKeybJoystick(new KeybJoystick);
+      keybjoystick()->begin(generateVirtualKeys, createVKQueue, 1);
+      s_keyboardAllocated = s_keybjoystickAllocated = true;
+      break;
   };
 }
 

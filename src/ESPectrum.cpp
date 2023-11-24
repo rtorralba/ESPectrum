@@ -319,9 +319,10 @@ void ESPectrum::setup()
     // KEYBOARD
     //=======================================================================================
 
-    ESPectrum::ps2kbd2 = !((ZXKeyb::Exists) || (Config::ps2_dev2 == 0));
-    PS2Controller.begin(ps2kbd2 ? PS2Preset::KeyboardPort0_KeybJoystickPort1 : PS2Preset::KeyboardPort0, KbdMode::CreateVirtualKeysQueue);
-    PS2Controller.keyboard()->reset(); // This is already setting the ScancodeSet 2 - Needed to allow video mode change on boot by pressing keys only (not alternate) ///////
+    ESPectrum::ps2kbd2 = !((ZXKeyb::Exists) || (Config::ps2_dev2 == 0)); // ZXKeyb check is disabling the 2nd port when physical keyboard exists - See also Config.cpp ///////
+    //ESPectrum::ps2kbd2 = !(Config::ps2_dev2 == 0); ///////
+    PS2Controller.begin(ps2kbd2 ? (ZXKeyb::Exists ? PS2Preset::KeyboardPort0_KeyboardAltPort1 : PS2Preset::KeyboardPort0_KeybJoystickPort1) : PS2Preset::KeyboardPort0, KbdMode::CreateVirtualKeysQueue); ///////
+    //PS2Controller.keyboard()->reset(); // This is already setting the ScancodeSet 2 - Needed to allow video mode change on boot by pressing keys only (not alternate) ///////
 
     #ifndef ESP32_SDL2_WRAPPER
 
