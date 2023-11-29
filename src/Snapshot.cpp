@@ -166,7 +166,7 @@ bool FileSNA::load(string sna_fn, string force_arch) {
             #endif
         
         } else {
-            
+            #ifdef SNAPSHOT_LOAD_FORCE_ARCH ///////
             if ((force_arch != "") && (Config::getArch() != force_arch)) {
                 
                 snapshotArch = force_arch;
@@ -194,13 +194,13 @@ bool FileSNA::load(string sna_fn, string force_arch) {
                 }
 
             }
-
+			#endif ///////
         }
 
     } else if (Config::getArch() == "48K") {
 
         if (snapshotArch != "48K") {
-
+			#ifdef SNAPSHOT_LOAD_FORCE_ARCH ///////
             if (force_arch == "")
                 Config::requestMachine("Pentagon", "SINCLAIR");
             else {
@@ -227,7 +227,7 @@ bool FileSNA::load(string sna_fn, string force_arch) {
                 Config::save();
                 OSD::esp_hard_reset();                            
             }
-
+			#endif ///////
         }
 
     }
@@ -610,6 +610,7 @@ bool FileZ80::load(string z80_fn) {
 
     // Manage arch change
     if (Config::getArch() != z80_arch) {
+		#ifdef SNAPSHOT_LOAD_FORCE_ARCH ///////
         Config::requestMachine(z80_arch, "SINCLAIR");
         // Condition this to 50hz mode
         if(Config::videomode) {
@@ -629,9 +630,11 @@ bool FileZ80::load(string z80_fn) {
             Config::ram_file = z80_fn;
             Config::save();
             OSD::esp_hard_reset(); 
-        }                           
+        }
+		#endif ///////
     }
-    
+	
+	
     ESPectrum::reset();
 
     // Get file size
