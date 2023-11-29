@@ -339,7 +339,7 @@ bool PS2Device::send_cmdReset()
   PS2DeviceLock deviceLock(this);
   if (!sendCommand(PS2_CMD_RESET, PS2_REPLY_ACK))
     return false;
-  return getData(500) == PS2_REPLY_SELFTEST_OK; // timout 500ms should be enough for PS2 device to reset and do self test
+  return getData(500) == PS2_REPLY_SELFTEST_OK; // timout 500ms should be enough for PS2 device to reset and do self test ///////
 }
 
 

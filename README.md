@@ -75,22 +75,41 @@ The SD card should be formatted in FAT16 / FAT32 and you must create the followi
 
 First time the emulator access sna, tape or disk directories, it will create and index for sorting the files in it. It may take some time if you put many archives (15-20 seconds in my tests for about 1000 files, about 3 minutes for about 6000 files). Once created, file dialogs will open fast but if you extract the card and add files, you must later use "Options/Storage/Refresh directories" to be able to view new files on the files dialogs.
 
-## Keyboard functions
+## PS/2 Keyboard functions
 
-- F1 Main menu
-- F2 Load .sna, .z80
-- F3 Load snapshot
-- F4 Save snapshot
-- F5 Select .tap file
+- F1 Menu
+- F2 Load (SNA,Z80)
+- F3 Load custom snapshot
+- F4 Save customn snapshot
+- F5 Select TAP file
 - F6 Play/Stop tape
 - F7 Tape Browser
-- F8 Stats OSD ( [CPU] microsecs per CPU cycle, [IDL] idle microsecs, [FPS] Frames per second, [FND] FPS w/no delay applied )
+- F8 OSD Stats ( [CPU] microsecs per CPU cycle, [IDL] idle microsecs, [FPS] Frames per second, [FND] FPS w/no delay applied )
 - F9 Volume down
 - F10 Volume up
 - F11 Hard reset
 - F12 Reset ESP32
 - Pause Pause
 - PrntScr BMP screen capture (Folder /c at SDCard)
+
+## ZX Keyboard functions
+
+Press CAPS SHIFT + SYMBOL SHIFT and:
+
+- 1 Menu
+- 2 Load (SNA,Z80)
+- 3 Load custom snapshot
+- 4 Save custom snapshot
+- 5 Select TAP file
+- 6 Play/Stop tape
+- 7 Tape browser
+- 8 OSD Stats ( [CPU] microsecs per CPU cycle, [IDL] idle microsecs, [FPS] Frames per second, [FND] FPS w/no delay applied )
+- 9 Volume down
+- 0 Volume up
+- Q Hard reset
+- W Reset ESP32
+- P Pause
+- C BMP screen capture (Folder /c at SDCard)
 
 ## Hardware configuration and pinout
 
@@ -107,6 +126,11 @@ Pin assignment in `hardpins.h` is set to match the boards we've tested emulator 
 - PS2 Driver from Fabrizio di Vittorio for his [FabGL library](https://github.com/fdivitto/FabGL).
 - [Ackerman](https://github.com/rpsubc8/ESP32TinyZXSpectrum) for his code and ideas.
 - Azesmbog for testing and providing very valuable info to make the emu more precise.
+- David Carrión for hardware and ZX keyboard code.
+- ZjoyKiLer for his testing and ideas.
+- [Mark Woodmass](https://specemu.zxe.io) and [Juan Carlos González Amestoy](https://www.retrovirtualmachine.org) for his excellent emulators and his help with wd1793 emulation.
+- [Antonio Villena](https://antoniovillena.es/store) for creating the ESPectrum board.
+- Tsvetan Usunov from [Olimex Ltd](https://www.olimex.com).
 - [Amstrad PLC](http://www.amstrad.com) for the ZX-Spectrum ROM binaries [liberated for emulation purposes](http://www.worldofspectrum.org/permits/amstrad-roms.txt).
 - [Jean Thomas](https://github.com/jeanthom/ESP32-APLL-cal) for his ESP32 APLL calculator.
 
@@ -122,6 +146,9 @@ Pin assignment in `hardpins.h` is set to match the boards we've tested emulator 
 ## And all the writters, hobbist and documenters
 
 - [Retrowiki](http://retrowiki.es/) especially the people at [ESP32 TTGO VGA32](http://retrowiki.es/viewforum.php?f=114) subforum.
+- [RetroReal](https://www.youtube.com/@retroreal) for his kindness and hospitality and his great work.
+- Armand López [El Viejoven FX](https://www.youtube.com/@ElViejovenFX)
+- Javi Ortiz [El Spectrumero](https://www.youtube.com/@ElSpectrumeroJaviOrtiz) 
 - [El Mundo del Spectrum](http://www.elmundodelspectrum.com/)
 - [Microhobby magazine](https://es.wikipedia.org/wiki/MicroHobby).
 - [The World of Spectrum](http://www.worldofspectrum.org/)

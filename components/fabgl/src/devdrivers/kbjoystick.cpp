@@ -133,7 +133,8 @@ bool KeybJoystick::reset()
 
   // sets default layout
   setLayout(&USLayout);
-
+	
+  /* ///////
   // 350ms keyboard poweron delay (look at NXP M68HC08 designer reference manual)
   vTaskDelay(350 / portTICK_PERIOD_MS);
 
@@ -146,10 +147,38 @@ bool KeybJoystick::reset()
   }
   // give the time to the device to be fully initialized
   vTaskDelay(200 / portTICK_PERIOD_MS);
+  */ ///////
 
+  m_keyboardAvailable = true; ///////
+
+  //send_cmdReset(); ///////
   send_cmdSetScancodeSet(2);
 
   return m_keyboardAvailable;
+}
+	
+	
+void KeybJoystick::resetOnly()
+{
+  //memset(m_VKMap, 0, sizeof(m_VKMap));
+		
+  // sets default layout
+  //setLayout(&USLayout);
+		
+  // tries up to three times to reset keyboard
+  for (int i = 0; i < 2; ++i) {
+	// 350ms keyboard poweron delay (look at NXP M68HC08 designer reference manual)
+	vTaskDelay(250 / portTICK_PERIOD_MS);
+	m_keyboardAvailable = send_cmdReset();
+	if (m_keyboardAvailable) {
+	  // give the time to the device to be fully initialized
+	  //vTaskDelay(200 / portTICK_PERIOD_MS);
+	  break;
+	}
+		
+  }
+		
+  send_cmdSetScancodeSet(2);
 }
 
 

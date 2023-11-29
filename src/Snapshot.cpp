@@ -68,25 +68,17 @@ bool LoadSnapshot(string filename, string force_arch) {
 
     bool res = false;
 
-    // // Stop keyboard input
-    // ESPectrum::PS2Controller.keyboard()->suspendPort();
-    // if (!ZXKeyb::Exists) ESPectrum::PS2Controller.keybjoystick()->suspendPort();
-
     bool OSDprev = VIDEO::OSD;
     
     if (FileUtils::hasSNAextension(filename)) {
 
-        printf("FileSNA::load %s\n",filename.c_str());
-
-        OSD::osdCenteredMsg(MSG_LOADING_SNA + (string) ": " + filename, LEVEL_INFO, 0);
+        OSD::osdCenteredMsg(MSG_LOADING_SNA + (string) ": " + filename.substr(filename.find_last_of("/") + 1), LEVEL_INFO, 0);
 
         res = FileSNA::load(filename, force_arch);
 
     } else if (FileUtils::hasZ80extension(filename)) {
 
-        printf("FileZ80::load %s\n",filename.c_str());
-
-        OSD::osdCenteredMsg(MSG_LOADING_Z80 + (string)": " + filename, LEVEL_INFO, 0);
+        OSD::osdCenteredMsg(MSG_LOADING_Z80 + (string) ": " + filename.substr(filename.find_last_of("/") + 1), LEVEL_INFO, 0);
 
         res = FileZ80::load(filename);
 
@@ -100,10 +92,6 @@ bool LoadSnapshot(string filename, string force_arch) {
             VIDEO::DrawOSD43  = Z80Ops::isPentagon ? VIDEO::BottomBorder_OSD_Pentagon : VIDEO::BottomBorder_OSD;
         ESPectrum::TapeNameScroller = 0;
     }    
-
-    // // Resume keyboard input
-    // ESPectrum::PS2Controller.keyboard()->resumePort();
-    // if (!ZXKeyb::Exists) ESPectrum::PS2Controller.keybjoystick()->resumePort();
 
     return res;
 
@@ -157,6 +145,19 @@ bool FileSNA::load(string sna_fn, string force_arch) {
 
                 // Condition this to 50hz mode
                 if(Config::videomode) {
+
+                    Config::SNA_Path = FileUtils::SNA_Path;
+                    Config::SNA_begin_row = FileUtils::fileTypes[DISK_SNAFILE].begin_row;
+                    Config::SNA_focus = FileUtils::fileTypes[DISK_SNAFILE].focus;
+
+                    Config::TAP_Path = FileUtils::TAP_Path;
+                    Config::TAP_begin_row = FileUtils::fileTypes[DISK_TAPFILE].begin_row;
+                    Config::TAP_focus = FileUtils::fileTypes[DISK_TAPFILE].focus;
+
+                    Config::DSK_Path = FileUtils::DSK_Path;
+                    Config::DSK_begin_row = FileUtils::fileTypes[DISK_DSKFILE].begin_row;
+                    Config::DSK_focus = FileUtils::fileTypes[DISK_DSKFILE].focus;
+
                     Config::ram_file = sna_fn;
                     Config::save();
                     OSD::esp_hard_reset(); 
@@ -174,6 +175,19 @@ bool FileSNA::load(string sna_fn, string force_arch) {
 
                 // Condition this to 50hz mode
                 if(Config::videomode) {
+
+                    Config::SNA_Path = FileUtils::SNA_Path;
+                    Config::SNA_begin_row = FileUtils::fileTypes[DISK_SNAFILE].begin_row;
+                    Config::SNA_focus = FileUtils::fileTypes[DISK_SNAFILE].focus;
+
+                    Config::TAP_Path = FileUtils::TAP_Path;
+                    Config::TAP_begin_row = FileUtils::fileTypes[DISK_TAPFILE].begin_row;
+                    Config::TAP_focus = FileUtils::fileTypes[DISK_TAPFILE].focus;
+
+                    Config::DSK_Path = FileUtils::DSK_Path;
+                    Config::DSK_begin_row = FileUtils::fileTypes[DISK_DSKFILE].begin_row;
+                    Config::DSK_focus = FileUtils::fileTypes[DISK_DSKFILE].focus;
+
                     Config::ram_file = sna_fn;
                     Config::save();
                     OSD::esp_hard_reset();                            
@@ -196,6 +210,19 @@ bool FileSNA::load(string sna_fn, string force_arch) {
 
             // Condition this to 50hz mode
             if(Config::videomode) {
+
+                Config::SNA_Path = FileUtils::SNA_Path;
+                Config::SNA_begin_row = FileUtils::fileTypes[DISK_SNAFILE].begin_row;
+                Config::SNA_focus = FileUtils::fileTypes[DISK_SNAFILE].focus;
+
+                Config::TAP_Path = FileUtils::TAP_Path;
+                Config::TAP_begin_row = FileUtils::fileTypes[DISK_TAPFILE].begin_row;
+                Config::TAP_focus = FileUtils::fileTypes[DISK_TAPFILE].focus;
+
+                Config::DSK_Path = FileUtils::DSK_Path;
+                Config::DSK_begin_row = FileUtils::fileTypes[DISK_DSKFILE].begin_row;
+                Config::DSK_focus = FileUtils::fileTypes[DISK_DSKFILE].focus;
+
                 Config::ram_file = sna_fn;
                 Config::save();
                 OSD::esp_hard_reset();                            
@@ -207,7 +234,7 @@ bool FileSNA::load(string sna_fn, string force_arch) {
     
     ESPectrum::reset();
 
-    printf("FileSNA::load: Opening %s: size = %d\n", sna_fn.c_str(), sna_size);
+    // printf("FileSNA::load: Opening %s: size = %d\n", sna_fn.c_str(), sna_size);
 
     MemESP::bankLatch = 0;
     MemESP::pagingLock = 1;
@@ -330,13 +357,13 @@ bool check_and_create_directory(const char* path) {
     struct stat st;
     if (stat(path, &st) == 0) {
         if ((st.st_mode & S_IFDIR) != 0) {
-            printf("Directory exists\n");
+            // printf("Directory exists\n");
             return true;
         } else {
-            printf("Path exists but it is not a directory\n");
+            // printf("Path exists but it is not a directory\n");
             // Create the directory
             if (mkdir(path, 0755) == 0) {
-                printf("Directory created\n");
+                // printf("Directory created\n");
                 return true;
             } else {
                 printf("Failed to create directory\n");
@@ -344,10 +371,10 @@ bool check_and_create_directory(const char* path) {
             }
         }
     } else {
-        printf("Directory does not exist\n");
+        // printf("Directory does not exist\n");
         // Create the directory
         if (mkdir(path, 0755) == 0) {
-            printf("Directory created\n");
+            // printf("Directory created\n");
             return true;
         } else {
             printf("Failed to create directory\n");
@@ -604,7 +631,7 @@ bool FileZ80::load(string z80_fn) {
 
     }
 
-    printf("Z80 version %u, AHB Len: %u, machine code: %u\n",(unsigned char)z80version,(unsigned int)ahb_len, (unsigned char)mch);
+    // printf("Z80 version %u, AHB Len: %u, machine code: %u\n",(unsigned char)z80version,(unsigned int)ahb_len, (unsigned char)mch);
 
     if (z80_arch == "") {
         OSD::osdCenteredMsg("Z80 load: unknown machine", LEVEL_ERROR);
@@ -613,11 +640,27 @@ bool FileZ80::load(string z80_fn) {
         return false;
     }
 
+    // printf("fileTypes -> Path: %s, begin_row: %d, focus: %d\n",FileUtils::SNA_Path.c_str(),FileUtils::fileTypes[DISK_SNAFILE].begin_row,FileUtils::fileTypes[DISK_SNAFILE].focus);                    
+    // printf("Config    -> Path: %s, begin_row: %d, focus: %d\n",Config::Path.c_str(),(int)Config::begin_row,(int)Config::focus);                    
+
     // Manage arch change
     if (Config::getArch() != z80_arch) {
         Config::requestMachine(z80_arch, "SINCLAIR");
         // Condition this to 50hz mode
         if(Config::videomode) {
+
+            Config::SNA_Path = FileUtils::SNA_Path;
+            Config::SNA_begin_row = FileUtils::fileTypes[DISK_SNAFILE].begin_row;
+            Config::SNA_focus = FileUtils::fileTypes[DISK_SNAFILE].focus;
+
+            Config::TAP_Path = FileUtils::TAP_Path;
+            Config::TAP_begin_row = FileUtils::fileTypes[DISK_TAPFILE].begin_row;
+            Config::TAP_focus = FileUtils::fileTypes[DISK_TAPFILE].focus;
+
+            Config::DSK_Path = FileUtils::DSK_Path;
+            Config::DSK_begin_row = FileUtils::fileTypes[DISK_DSKFILE].begin_row;
+            Config::DSK_focus = FileUtils::fileTypes[DISK_DSKFILE].focus;
+
             Config::ram_file = z80_fn;
             Config::save();
             OSD::esp_hard_reset(); 

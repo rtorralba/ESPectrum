@@ -30,7 +30,7 @@ I2S::I2S(const int i2sIndex)
 	stopSignal = false;
 }
 
-void IRAM_ATTR I2S::interruptStatic(void *arg)
+IRAM_ATTR void I2S::interruptStatic(void *arg)
 {
 	volatile i2s_dev_t &i2s = *i2sDevices[((I2S *)arg)->i2sIndex];
 	//i2s object not safely accesed in DRAM or IRAM
@@ -329,7 +329,7 @@ bool I2S::initParallelOutputMode(const int *pinMap, long sampleRate, const int b
 
 		rtc_clk_apll_enable(true, sdm & 255, (sdm >> 8) & 255, sdm >> 16, odir);
 
-		printf("APLL parameters: sdm0 %d sdm1 %d sdm2 %d odiv %d\n", sdm & 255, (sdm >> 8) & 255, sdm >> 16, odir);
+		// printf("APLL parameters: sdm0 %d sdm1 %d sdm2 %d odiv %d\n", sdm & 255, (sdm >> 8) & 255, sdm >> 16, odir);
 /*
 		// using values calculated by https://github.com/jeanthom/ESP32-APLL-cal
 		// thanks, @ackerman and @eremus!

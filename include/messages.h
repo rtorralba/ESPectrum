@@ -41,7 +41,8 @@ visit https://zxespectrum.speccy.org/contacto
 #define MSG_LOADING_Z80 "Loading Z80 file"
 #define MSG_SAVE_CONFIG "Saving config file"
 #define MSG_VGA_INIT "Initializing VGA"
-#define EMU_VERSION "   v1.0rc3pr"
+// #define EMU_VERSION "       v1.0 "
+#define EMU_VERSION " Dev 221123 "
 
 // Error
 #define ERROR_TITLE "  !!!   ERROR - CLIVE MEDITATION   !!!  "
@@ -54,7 +55,7 @@ visit https://zxespectrum.speccy.org/contacto
 
 // OSD
 #define OSD_TITLE  " ESPectrum - The ESP32 powered emulator "
-// #define OSD_BOTTOM " SCIENCE LEADS TO PROGRESS      v1.0rc1 "
+// #define OSD_BOTTOM " SCIENCE LEADS TO PROGRESS              "
 #define OSD_BOTTOM " zxespectrum.speccy.org     " EMU_VERSION
 
 #define OSD_PAUSE_EN "--=[ PAUSED ]=--"
@@ -62,13 +63,13 @@ visit https://zxespectrum.speccy.org/contacto
 static const char *OSD_PAUSE[2] = { OSD_PAUSE_EN,OSD_PAUSE_ES };
 
 #define OSD_PSNA_NOT_AVAIL "No Persist Snapshot Available"
-#define OSD_PSNA_LOADING "Loading Persist Snapshot..."
-#define OSD_PSNA_SAVING "Saving Persist Snapshot..."
+#define OSD_PSNA_LOADING "Loading Persist Snapshot"
+#define OSD_PSNA_SAVING  "Saving Persist Snapshot"
 #define OSD_PSNA_SAVE_WARN "Disk error. Trying slow mode, be patient"
 #define OSD_PSNA_SAVE_ERR "ERROR Saving Persist Snapshot"
-#define OSD_PSNA_LOADED  "  Persist Snapshot Loaded  "
+#define OSD_PSNA_LOADED  "Persist Snapshot Loaded"
 #define OSD_PSNA_LOAD_ERR "ERROR Loading Persist Snapshot"
-#define OSD_PSNA_SAVED  "  Persist Snapshot Saved  "
+#define OSD_PSNA_SAVED  "Persist Snapshot Saved"
 #define OSD_TAPE_FLASHLOAD "Flash loading TAP file"
 #define OSD_TAPE_LOAD_ERR "ERROR Loading TAP file"
 #define OSD_TAPE_SAVE_ERR "ERROR Saving TAP file"
@@ -77,6 +78,22 @@ static const char *OSD_PAUSE[2] = { OSD_PAUSE_EN,OSD_PAUSE_ES };
 #define OSD_TAPE_SELECT_ERR_EN "No TAP selected"
 #define OSD_TAPE_SELECT_ERR_ES "TAP no seleccionado"
 static const char *OSD_TAPE_SELECT_ERR[2] = { OSD_TAPE_SELECT_ERR_EN,OSD_TAPE_SELECT_ERR_ES };
+
+#define OSD_FIRMW_BEGIN_EN "Erasing destination partition."
+#define OSD_FIRMW_BEGIN_ES "Borrando particion de destino."
+static const char *OSD_FIRMW_BEGIN[2] = { OSD_FIRMW_BEGIN_EN,OSD_FIRMW_BEGIN_ES};
+
+#define OSD_FIRMW_WRITE_EN "    Flashing new firmware.    "
+#define OSD_FIRMW_WRITE_ES "   Grabando nuevo firmware.   "
+static const char *OSD_FIRMW_WRITE[2] = { OSD_FIRMW_WRITE_EN,OSD_FIRMW_WRITE_ES};
+
+#define OSD_FIRMW_END_EN "Flashing complete. Rebooting."
+#define OSD_FIRMW_END_ES "  Completado. Reiniciando.   "
+static const char *OSD_FIRMW_END[2] = { OSD_FIRMW_END_EN,OSD_FIRMW_END_ES};
+
+#define OSD_FIRMW_ERR_EN "Problem updating firmware."
+#define OSD_FIRMW_ERR_ES "Error actualizando firmware."
+static const char *OSD_FIRMW_ERR[2] = { OSD_FIRMW_ERR_EN,OSD_FIRMW_ERR_ES};
 
 #define MENU_SNA_TITLE_EN "Select Snapshot"
 #define MENU_SNA_TITLE_ES "Elija snapshot"
@@ -138,7 +155,7 @@ static const char *MENU_BETADISK[2] = { MENU_BETADISK_EN,MENU_BETADISK_ES };
     "Expulsar disco\n"
 static const char *MENU_BETADRIVE[2] = { MENU_BETADRIVE_EN,MENU_BETADRIVE_ES };
 
-#define MENU_MAIN_EN /*"Main Menu\n"*/ \
+#define MENU_MAIN_EN \
     "Snapshot\t>\n"\
     "Tape\t>\n"\
     "Betadisk\t>\n"\
@@ -147,7 +164,7 @@ static const char *MENU_BETADRIVE[2] = { MENU_BETADRIVE_EN,MENU_BETADRIVE_ES };
     "Help\n"\
     "About\n"\
     "Virtual keyboard\t>\n"
-#define MENU_MAIN_ES /*"Menu principal\n"*/ \
+#define MENU_MAIN_ES \
     "Snapshots\t>\n"\
     "Casete\t>\n"\
     "Betadisk\t>\n"\
@@ -165,7 +182,8 @@ static const char *MENU_MAIN[2] = { MENU_MAIN_EN,MENU_MAIN_ES };
     "Aspect ratio\t>\n"\
     "PS/2 Joystick\t>\n"\
     "Language\t>\n"\
-    "Other\t>\n"
+    "Other\t>\n"\
+	"Firmware update\n"
 #define MENU_OPTIONS_ES \
     "Menu opciones\n"\
     "Almacenamiento\t>\n"\
@@ -173,7 +191,8 @@ static const char *MENU_MAIN[2] = { MENU_MAIN_EN,MENU_MAIN_ES };
     "Rel. aspecto\t>\n"\
     "Joystick PS/2\t>\n"\
     "Idioma\t>\n"\
-    "Otros\t>\n"
+    "Otros\t>\n"\
+	"Actualizar firmware\n"
 static const char *MENU_OPTIONS[2] = { MENU_OPTIONS_EN,MENU_OPTIONS_ES };
 
 #define MENU_ASPECT_EN \
@@ -232,28 +251,12 @@ static const char *MENU_PERSIST_SAVE[2] = { MENU_PERSIST_SAVE_EN, MENU_PERSIST_S
     "Cargar snapshot\n" MENU_PERSIST_ES
 static const char *MENU_PERSIST_LOAD[2] = { MENU_PERSIST_LOAD_EN, MENU_PERSIST_LOAD_ES };
 
-// #define MENU_STORAGE_EN "Storage\n"\
-//     "Internal\t[I]\n"\
-//     "SD Card\t[S]\n"\
-//     "Refresh directories\n"
-// #define MENU_STORAGE_ES "Almacenamiento\n"\
-//     "Interno\t[I]\n"\
-//     "Tarjeta SD\t[S]\n"\
-//     "Refrescar directorios\n"
-// static const char *MENU_STORAGE[2] = { MENU_STORAGE_EN, MENU_STORAGE_ES };
-
-// #define MENU_STORAGE_EN "Storage\n"\
-//     "Refresh directories\n"
-// #define MENU_STORAGE_ES "Almacenamiento\n"\
-//     "Refrescar directorios\n"
-// static const char *MENU_STORAGE[2] = { MENU_STORAGE_EN, MENU_STORAGE_ES };
-
 #define MENU_STORAGE_EN "Storage\n"\
-    "Flash tape load\t>\n"\
-    "Refresh directories\n"
+    "Flash tape load\t>\n"
+    // "Refresh directories\n"
 #define MENU_STORAGE_ES "Almacenamiento\n"\
-    "Carga rapida cinta\t>\n"\
-    "Refrescar directorios\n"
+    "Carga rapida cinta\t>\n"
+    // "Refrescar directorios\n"
 // static const char *MENU_STORAGE[2] = { MENU_STORAGE_EN, MENU_STORAGE_ES };
 
 #define MENU_FLASHLOAD_EN "Flash load\n"\
@@ -268,12 +271,12 @@ static const char *MENU_PERSIST_LOAD[2] = { MENU_PERSIST_LOAD_EN, MENU_PERSIST_L
     "AY on 48K\t>\n"\
     "ALU Timing\t>\n"\
     "48K Issue 2\t>\n"\
-    "Device on 2nd PS/2\t>\n"
+    "Second PS/2 device\t>\n"
 #define MENU_OTHER_ES "Otros\n"\
     "AY en 48K\t>\n"\
     "Timing ULA\t>\n"\
     "48K Issue 2\t>\n"\
-    "Disp. en segundo PS/2\t>\n"	
+    "Segundo disp. PS/2\t>\n"	
 static const char *MENU_OTHER[2] = { MENU_OTHER_EN, MENU_OTHER_ES };
 
 #define MENU_AY48_EN "AY on 48K\n"\
@@ -318,30 +321,6 @@ static const char *MENU_ISSUE2[2] = { MENU_ISSUE2_EN, MENU_ISSUE2_ES };
     "Pentagon 128K\n"
 static const char *MENU_ARCH[2] = { MENU_ARCH_EN, MENU_ARCH_ES };
 
-// #define MENU_ROMSET48_EN "Select ROM\n"\
-//     "SINCLAIR\n"\
-//     "SE\n"
-// #define MENU_ROMSET48_ES "Elija ROM\n"\
-//     "SINCLAIR\n"\
-//     "SE\n"
-// static const char *MENU_ROMSET48[2] = { MENU_ROMSET48_EN, MENU_ROMSET48_ES };
-
-// #define MENU_ROMSET128_EN "Select ROM\n"\
-//     "SINCLAIR\n"\
-//     "PLUS2\n"
-// #define MENU_ROMSET128_ES "Elija ROM\n"\
-//     "SINCLAIR\n"\
-//     "PLUS2\n"
-// static const char *MENU_ROMSET128[2] = { MENU_ROMSET128_EN, MENU_ROMSET128_ES };
-
-// #define MENU_LANGUAGE_EN "Language\n"\
-//     "Interface\t>\n"\
-//     "PS2 Keyboard\t>\n"
-// #define MENU_LANGUAGE_ES "Idioma\n"\
-//     "Interfaz\t>\n"\
-//     "Teclado PS2\t>\n"
-// static const char *MENU_LANGUAGE[2] = { MENU_LANGUAGE_EN, MENU_LANGUAGE_ES };
-
 #define MENU_INTERFACE_LANG_EN "Language\n"\
     "English\t[ ]\n"\
     "Spanish\t[ ]\n"
@@ -352,25 +331,21 @@ static const char *MENU_INTERFACE_LANG[2] = { MENU_INTERFACE_LANG_EN, MENU_INTER
 
 #define MENU_JOY_EN "PS/2 Joystick\n"\
     "Cursor\t[ ]\n"\
-    "Kempston\t[ ]\n"
+    "Kempston\t[ ]\n"\
+	"Cursor Keys as Joy\t>\n"
 #define MENU_JOY_ES "Joystick PS/2\n"\
     "Cursor\t[ ]\n"\
-    "Kempston\t[ ]\n"
+    "Kempston\t[ ]\n"\
+	"Joy en teclas de cursor\t>\n"
 static const char *MENU_JOY[2] = { MENU_JOY_EN, MENU_JOY_ES };
 
-// #define MENU_KBD_LAYOUT_EN "Select language\n"\
-//     "US English\t[US]\n"\
-//     "Spanish\t[ES]\n"\
-//     "German\t[DE]\n"\
-//     "French\t[FR]\n"\
-//     "UK British\t[UK]\n"
-// #define MENU_KBD_LAYOUT_ES "Elija idioma\n"\
-//     "Ingles EEUU\t[US]\n"\
-//     "Espanol\t[ES]\n"\
-//     "Aleman\t[DE]\n"\
-//     "Frances\t[FR]\n"\
-//     "Ingles GB\t[UK]\n"
-// static const char *MENU_KBD_LAYOUT[2] = { MENU_KBD_LAYOUT_EN, MENU_KBD_LAYOUT_ES };
+#define MENU_CURSORJOY_EN "Cursor as Joy\n"\
+    "Yes\t[Y]\n"\
+    "No\t[N]\n"
+#define MENU_CURSORJOY_ES "Joy en Cursor\n"\
+    "Si\t[Y]\n"\
+    "No\t[N]\n"
+static const char *MENU_CURSORJOY[2] = { MENU_CURSORJOY_EN, MENU_CURSORJOY_ES };
 
 #define DEDICATORIA "\nF1Dedicado especialmente a:\r"\
 	"\nB1      _       _ _\r"\
@@ -388,18 +363,45 @@ static const char *MENU_JOY[2] = { MENU_JOY_EN, MENU_JOY_ES };
 
 #define PATREONS "\r"\
 	"\nA1The Mega Trees:\r"\
+	"\r"\	
 	"\nB1Victor Llamazares \nC1Antonio Villena\r"\
 	"\r"\
 	"\nA1The Jet Set Willys:\r"\
-	"\nD1Inacio Santos\r"\
 	"\r"\
-	"\nA1The Manic Miners:\r"\
-	"\nE1Fernando Bonilla \nB1Jorge Garcia\r"\
-	"\nC1Ignacio Monge \nD1Jose Maria Rodriguez\r"\
-	"\nB1Julia Salvador \nC1Marta Sicilia\r"\
-	"\nD1Santiago Romero \nE1Radek Wojciechowski\r"
+	"\nD1DopierRex \nE1Igor Peruchi \nB1Inacio Santos\r"\
+	"\r"\
+	"\r"\
+	"\r"\
+	"\r"
 
-static const char *AboutMsg[2][5] = {
+	// Lencio Asimov
+	// Fernando Bonilla
+	// Elena Collantes
+	// Jorge Garcia
+	// kounch
+	// Ignacio Monge
+	// Javi Ortiz
+	// Jordi Ramos
+	// Jose Maria Rodriguez
+	// Santiago Romero
+	// Julia Salvador
+	// Marta Sicilia
+	// Radek Wojciechowski
+
+#define PATREONS2 "\r"\
+	"\nA1The Manic Miners:\r"\
+	"\r"\
+	"\nE1Lencio Asimov \nB1Fernando Bonilla\r"\
+	"\nC1Elena Collantes \nD1Jorge Garcia\r"\
+	"\nB1kounch \nC1Ignacio Monge \nD1Javi Ortiz\r"\
+	"\nD1Jordi Ramos \nE1Jose Maria Rodriguez\r"\
+	"\nB1Santiago Romero \nC1Julia Salvador\r"\
+	"\nD1Marta Sicilia \nE1Radek Wojciechowski\r"\
+	"\r"\
+	"\r"\
+	"\r"
+
+static const char *AboutMsg[2][6] = {
 	{
 	"\nF1(C)2023 Victor Iborra \"Eremus\"\r"\
 	"        David Crespo  \"dcrespo3d\"\r"\
@@ -431,6 +433,9 @@ static const char *AboutMsg[2][5] = {
 	,
 	"\nF1Big thanks to our Patreons:\r"\
 	PATREONS
+	,
+	"\nF1Big thanks to our Patreons:\r"\
+	PATREONS2
 	,
 	"\nF1Thanks also to:\r"\
 	"\r"\
@@ -480,6 +485,9 @@ static const char *AboutMsg[2][5] = {
 	"\nF1Muchas gracias a nuestros Patreons:\r"\
 	PATREONS
 	,
+	"\nF1Muchas gracias a nuestros Patreons:\r"\
+	PATREONS2
+	,
 	"\nF1Gracias tambien a:\r"\
 	"\r"\
 	"\nA1Retrowiki.es \nF1y su magnifica comunidad\r"\
@@ -516,6 +524,7 @@ static const char *AboutMsg[2][5] = {
     " [F12]    Reset ESP32\n"\
     " [Pause]  Pause\n"\
     " [PrtScr] BMP screenshot (SD folder /c)\n"
+
 #define OSD_HELP_ES \
     " [F1]      Menu\n"\
     " [F2]      Cargar (SNA,Z80)\n"\
@@ -535,9 +544,45 @@ static const char *AboutMsg[2][5] = {
     " [Pause]   Pausa\n"\
     " [ImpPant] Captura BMP (Carpeta SD /c)\n"
 
-// static const char *OSD_HELP[2] = { OSD_HELP_EN, OSD_HELP_ES };
+#define OSD_HELP_EN_ZX \
+    " Press CAPS SHIFT + SYMBOL SHIFT and:\n"\
+	" [1]    Menu\n"\
+    " [2]    Load (SNA,Z80)\n"\
+    " [3]    Load custom snapshot\n"\
+    " [4]    Save custom snapshot\n"\
+    " [5]    Select TAP file\n"\
+    " [6]    Play/Stop tape\n"\
+    " [7]    Tape browser\n"\
+    " [8]    OSD Stats:\n"\
+    "         CPU: microsec. per CPU cycle\n"\
+    "         IDL: unused microsec.\n"\
+    "         FPS: Frames per second\n"\
+    "         FND: FPS without delay\n"\
+    " [9-0]  Volume down-up\n"\
+    " [Q]    Hard reset\n"\
+    " [W]    Reset ESP32\n"\
+    " [P]    Pause\n"\
+    " [S]    BMP screenshot (SD folder /c)\n"
 
-// static const char *OSD_TAPE_OF[2] = { "of", "de" };
+#define OSD_HELP_ES_ZX \
+    " Presione CAPS SHIFT + SYMBOL SHIFT y:\n"\
+    " [1]    Menu\n"\
+    " [2]    Cargar (SNA,Z80)\n"\
+    " [3]    Cargar snapshot\n"\
+    " [4]    Guardar snapshot\n"\
+    " [5]    Elegir TAP\n"\
+    " [6]    Play/Stop cinta\n"\
+    " [7]    Explorador cinta\n"\
+    " [8]    OSD\n"\
+    "         CPU: microsg. por ciclo CPU\n"\
+    "         IDL: microsg. sin usar\n"\
+    "         FPS: Frames por segundo\n"\
+    "         FND: FPS sin delay\n"\
+    " [9-0]  Bajar-Subir volumen\n"\
+    " [Q]    Reset completo\n"\
+    " [W]    Resetear ESP32\n"\
+    " [P]    Pausa\n"\
+    " [S]    Captura BMP (Carpeta SD /c)\n"
 
 const uint8_t ESPectrum_logo[] = {
 	0x45, 0x42, 0x46, 0x38, 0xBB, 0x00, 0x1B, 0x00, 0xC0, 0xC0, 0xC0, 0xFF,

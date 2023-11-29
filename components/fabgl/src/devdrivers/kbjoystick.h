@@ -154,6 +154,8 @@ public:
    * @return True if the keyboard is correctly initialized.
    */
   bool reset();
+	
+  void resetOnly(); ///////
 
   /**
    * @brief Checks if keyboard has been detected and correctly initialized.

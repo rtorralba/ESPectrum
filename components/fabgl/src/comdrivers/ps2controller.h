@@ -58,6 +58,7 @@ enum class PS2Preset {
   MousePort1,                 /**< Mouse on port 1 (no keyboard) */
   KeyboardPort0_KeybJoystickPort1,/**< Keyboard on Port 0 and Port 1 */
   KeyboardPort0_KeyboardAltPort1, // Alternate port 1 pinout for different boards ///////
+  zxKeyb					  /**< Just ZX Keyboard, init PS/2 controller with no reset */
 };
 
 
