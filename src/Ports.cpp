@@ -66,24 +66,12 @@ IRAM_ATTR uint8_t Ports::input(uint16_t address) {
     uint8_t data;
     uint8_t rambank = address >> 14;    
 
-    // ** I/O Contention (Early) *************************
-    VIDEO::Draw(1, MemESP::ramContended[rambank]);
-    // ** I/O Contention (Early) *************************
+    VIDEO::Draw(1, MemESP::ramContended[rambank]); // I/O Contention (Early)
     
-    // ** I/O Contention (Late) **************************
-    if ((address & 0x0001) == 0) {
-        VIDEO::Draw(3, true);
-    } else {
-        if (MemESP::ramContended[rambank]) {
-            VIDEO::Draw(1, true);
-            VIDEO::Draw(1, true);
-            VIDEO::Draw(1, true);        
-        } else VIDEO::Draw(3, false);
-    }
-    // ** I/O Contention (Late) **************************
-
     // ULA PORT    
     if ((address & 0x0001) == 0) {
+
+        VIDEO::Draw(3, true);   // I/O Contention (Late)
 
         // The default port value is 0xBF.
         data = 0xbf;
@@ -109,22 +97,28 @@ IRAM_ATTR uint8_t Ports::input(uint16_t address) {
 
     } else {
 
+        ioContentionLate(MemESP::ramContended[rambank]);
+
         // The default port value is 0xFF.
         data = 0xff;
 
         // Check if TRDOS Rom is mapped.
         if (ESPectrum::trdos) {
             
-            int lowByte = address & 0xFF;
+            // int lowByte = address & 0xFF;
 
-            // Process Beta Disk instruction.
-            if (lowByte & 0x80) {
+            // // Process Beta Disk instruction.
+            // if (lowByte & 0x80) {
+            //         data = ESPectrum::Betadisk.ReadSystemReg();
+            //         // printf("WD1793 Read Control Register: %d\n",(int)data);
+            //         return data;
+            // }
+
+            switch (address & 0xFF) {
+                case 0xFF:
                     data = ESPectrum::Betadisk.ReadSystemReg();
                     // printf("WD1793 Read Control Register: %d\n",(int)data);
                     return data;
-            }
-
-            switch (lowByte) {
                 case 0x1F:
                     data = ESPectrum::Betadisk.ReadStatusReg();
                     // printf("WD1793 Read Status Register: %d\n",(int)data);
@@ -197,9 +191,7 @@ IRAM_ATTR void Ports::output(uint16_t address, uint8_t data) {
     int Audiobit;
     uint8_t rambank = address >> 14;
 
-    // ** I/O Contention (Early) *************************
-    VIDEO::Draw(1, MemESP::ramContended[rambank]);
-    // ** I/O Contention (Early) *************************
+    VIDEO::Draw(1, MemESP::ramContended[rambank]); // I/O Contention (Early)
 
     // ULA =======================================================================
     if ((address & 0x0001) == 0) {
@@ -216,33 +208,56 @@ IRAM_ATTR void Ports::output(uint16_t address, uint8_t data) {
         // Beeper Audio
         Audiobit = speaker_values[((data >> 2) & 0x04 ) | (Tape::tapeEarBit << 1) | ((data >> 3) & 0x01)];
         if (Audiobit != ESPectrum::lastaudioBit) {
-            ESPectrum::BeeperGetSample(Audiobit);
+            ESPectrum::BeeperGetSample();
             ESPectrum::lastaudioBit = Audiobit;
         }
 
-    }
+        // AY ========================================================================
+        if ((ESPectrum::AY_emu) && ((address & 0x8002) == 0x8000)) {
 
-    // AY ========================================================================
-    if ((ESPectrum::AY_emu) && ((address & 0x8002) == 0x8000)) {
-      if ((address & 0x4000) != 0)
-        AySound::selectRegister(data);
-      else {
-        ESPectrum::AYGetSample();
-        AySound::setRegisterData(data);
-      }
-    }
+            if ((address & 0x4000) != 0)
+                AySound::selectRegister(data);
+            else {
+                ESPectrum::AYGetSample();
+                AySound::setRegisterData(data);
+            }
 
-    // Check if TRDOS Rom is mapped.
-    if (ESPectrum::trdos) {
+            VIDEO::Draw(3, true);   // I/O Contention (Late)
+            
+            return;
 
-        int lowByte = address & 0xFF;
+        }
 
-        // Process Beta Disk instruction.
-        if (lowByte & 0x80) {
-            // printf("WD1793 Write Control Register: %d\n",data);
-            ESPectrum::Betadisk.WriteSystemReg(data);
-        } else
-            switch (lowByte) {
+        VIDEO::Draw(3, true);   // I/O Contention (Late)
+
+    } else {
+
+        // AY ========================================================================
+        if ((ESPectrum::AY_emu) && ((address & 0x8002) == 0x8000)) {
+
+            if ((address & 0x4000) != 0)
+                AySound::selectRegister(data);
+            else {
+                ESPectrum::AYGetSample();
+                AySound::setRegisterData(data);
+            }
+
+            ioContentionLate(MemESP::ramContended[rambank]);
+
+            return;
+
+        }
+
+        // Check if TRDOS Rom is mapped.
+        if (ESPectrum::trdos) {
+
+            // int lowByte = address & 0xFF;
+
+            switch (address & 0xFF) {
+                case 0xFF:
+                    // printf("WD1793 Write Control Register: %d\n",data);
+                    ESPectrum::Betadisk.WriteSystemReg(data);
+                    break;
                 case 0x1F:
                     // printf("WD1793 Write Command Register: %d\n",data);
                     ESPectrum::Betadisk.WriteCommandReg(data);
@@ -261,21 +276,12 @@ IRAM_ATTR void Ports::output(uint16_t address, uint8_t data) {
                     break;
             }
 
-    }
-
-    // ** I/O Contention (Late) **************************
-    if ((address & 0x0001) == 0) {
-        VIDEO::Draw(3, true);
-    } else {
-        if (MemESP::ramContended[rambank]) {
-            VIDEO::Draw(1, true);
-            VIDEO::Draw(1, true);
-            VIDEO::Draw(1, true);        
-        } else {
-            VIDEO::Draw(3, false);
         }
+
+        ioContentionLate(MemESP::ramContended[rambank]);
+
+
     }
-    // ** I/O Contention (Late) **************************
 
     // 128 / PENTAGON ==================================================================
     if ((!Z80Ops::is48) && ((address & 0x8002) == 0)) {
@@ -309,6 +315,18 @@ IRAM_ATTR void Ports::output(uint16_t address, uint8_t data) {
 
         }
 
+    }
+
+}
+
+IRAM_ATTR void Ports::ioContentionLate(bool contend) {
+
+    if (contend) {
+        VIDEO::Draw(1, true);
+        VIDEO::Draw(1, true);
+        VIDEO::Draw(1, true);        
+    } else {
+        VIDEO::Draw(3, false);
     }
 
 }
