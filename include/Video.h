@@ -38,7 +38,7 @@ visit https://zxespectrum.speccy.org/contacto
 
 #include <inttypes.h>
 #include "ESPectrum.h"
-#include "ESP32Lib/ESP32Lib.h"
+#include "ESP32Lib/VGA/VGA6Bit.h"
 
 #define SPEC_W 256
 #define SPEC_H 192
@@ -56,6 +56,28 @@ visit https://zxespectrum.speccy.org/contacto
 #define TS_SCREEN_360x200_128 13434 // START OF VISIBLE ULA DRAW 128K @ 360x200, SCANLINE 59, -16 FROM BORDER
                                     // ( ADDITIONAL -2 SEEMS NEEDED IF NOT USING 2 TSTATES AT A TIME PAPER DRAWING VERSION)                                    
 #define TS_SCREEN_360x200_PENTAGON 17074 // START OF VISIBLE ULA DRAW PENTAGON @ 360x200, SCANLINE 76, +48TS + 2TS (NEEDED TO FIT BORDER)
+
+// Colors for 6 bit mode
+//                  //  BBGGRR 
+#define BLACK       0b00000000 
+#define BLUE        0b00100000
+#define RED         0b00000010
+#define MAGENTA     0b00100010
+#define GREEN       0b00001000
+#define CYAN        0b00101000
+#define YELLOW      0b00001010
+#define WHITE       0b00101010
+#define BRI_BLACK   0b00000000
+#define BRI_BLUE    0b00110000
+#define BRI_RED     0b00000011
+#define BRI_MAGENTA 0b00110011
+#define BRI_GREEN   0b00001100
+#define BRI_CYAN    0b00111100
+#define BRI_YELLOW  0b00001111
+#define BRI_WHITE   0b00111111
+#define ORANGE      0b00000111 // used in ESPectrum logo text
+
+#define NUM_SPECTRUM_COLORS 17
 
 class VIDEO
 {
@@ -102,18 +124,19 @@ public:
   static void BottomBorder_Blank_Pentagon(unsigned int statestoadd, bool contended);
   static void BottomBorder_Pentagon(unsigned int statestoadd, bool contended);
   static void BottomBorder_OSD_Pentagon(unsigned int statestoadd, bool contended);
-
-  static uint8_t (*getFloatBusData)();
-  static uint8_t getFloatBusData48();
-  static uint8_t getFloatBusData128();    
-
-  static void (*Draw)(unsigned int, bool contended);
-  static void (*DrawOSD43)(unsigned int, bool contended);
-  static void (*DrawOSD169)(unsigned int, bool contended);
+  
+  static void (*Draw)(unsigned int, bool);
+  static void (*DrawOSD43)(unsigned int, bool);
+  static void (*DrawOSD169)(unsigned int, bool);
 
   static void vgataskinit(void *unused);
 
   static uint8_t* grmem;
+
+  static uint16_t spectrum_colors[NUM_SPECTRUM_COLORS];
+
+  static uint16_t offBmp[SPEC_H];
+  static uint16_t offAtt[SPEC_H];
 
   static VGA6Bit vga;
 
@@ -123,9 +146,6 @@ public:
 
   static uint8_t tStatesPerLine;
   static int tStatesScreen;
-
-  // static unsigned int tstateDraw; // Drawing start point (in Tstates)
-  // static unsigned int linedraw_cnt;
 
   static uint8_t flashing;
   static uint8_t flash_ctr;
@@ -147,59 +167,6 @@ public:
 
 };
 
-static unsigned int is169;
-
-static uint16_t offBmp[SPEC_H];
-static uint16_t offAtt[SPEC_H];
-
-// Colors for 6 bit mode
-//                            //   BB GGRR 
-#define BLACK       0xC0      // 1100 0000
-#define BLUE        0xE0      // 1110 0000
-#define RED         0xC2      // 1100 0010
-#define MAGENTA     0xE2      // 1110 0010
-#define GREEN       0xC8      // 1100 1000
-#define CYAN        0xE8      // 1110 1000
-#define YELLOW      0xCA      // 1100 1010
-#define WHITE       0xEA      // 1110 1010
-#define BRI_BLACK   0xC0      // 1100 0000
-#define BRI_BLUE    0xF0      // 1111 0000
-#define BRI_RED     0xC3      // 1100 0011
-#define BRI_MAGENTA 0xF3      // 1111 0011
-#define BRI_GREEN   0xCC      // 1100 1100
-#define BRI_CYAN    0xFC      // 1111 1100
-#define BRI_YELLOW  0xCF      // 1100 1111
-#define BRI_WHITE   0xFF      // 1111 1111
-
-// used in ESPectrum logo text
-#define ESP_ORANGE  0xC7      // 1100 0111
-
-#define NUM_SPECTRUM_COLORS 16
-static uint16_t spectrum_colors[NUM_SPECTRUM_COLORS] = {
-    BLACK,     BLUE,     RED,     MAGENTA,     GREEN,     CYAN,     YELLOW,     WHITE,
-    BRI_BLACK, BRI_BLUE, BRI_RED, BRI_MAGENTA, BRI_GREEN, BRI_CYAN, BRI_YELLOW, BRI_WHITE,
-};
-
-// uint16_t zxColor(uint8_t color, uint8_t bright);
-
-static uint32_t* AluBytes[16];
-
-// static unsigned char DrawStatus;
-
-static uint32_t* lineptr32;
-static uint16_t* lineptr16;
-
-static unsigned int tstateDraw; // Drawing start point (in Tstates)
-static unsigned int linedraw_cnt;
-static unsigned int lin_end;
-// static unsigned int mainscrline_cnt;
-static unsigned int coldraw_cnt;
-static unsigned int col_end;
-static unsigned int video_rest;
-
-static unsigned int bmpOffset;  // offset for bitmap in graphic memory
-static unsigned int attOffset;  // offset for attrib in graphic memory
-
-void precalcAluBytes();
+#define zxColor(color,bright) VIDEO::spectrum_colors[bright ? color + 8 : color]
 
 #endif // VIDEO_h
