@@ -26,6 +26,8 @@
 #include "Tape.h"
 #include "Config.h"
 #include "FileUtils.h"
+#include "OSDMain.h"
+#include "messages.h"
 
 // #pragma GCC optimize("O3")
 
@@ -4513,12 +4515,12 @@ void (*Z80::dcCB[256])() = {
 
 };
 
-// Trim from end (in place) (for SAVE trap, clean this up later)
-static inline void rtrim(std::string &s) {
-    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
-        return !std::isspace(ch);
-    }).base(), s.end());
-}
+// // Trim from end (in place) (for SAVE trap, clean this up later)
+// static inline void rtrim(std::string &s) {
+//     s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
+//         return !std::isspace(ch);
+//     }).base(), s.end());
+// }
 
 //Subconjunto de instrucciones 0xDD / 0xFD
 /*
@@ -4603,6 +4605,8 @@ void Z80::decodeDDFD(RegisterPair& regIXY) {
 
             if (REG_PC == 0x04d4) { // Save trap
 
+                static uint8_t SaveRes;
+
                 if (REG_HL == 0x1F80) {
 
                     // printf("Saving header!\n");
@@ -4619,26 +4623,38 @@ void Z80::decodeDDFD(RegisterPair& regIXY) {
                     rtrim(name);
                     Tape::tapeSaveName = FileUtils::MountPoint + "/" + FileUtils::TAP_Path + "/" + name + ".tap";
 
-                    // printf("Removing previuous tap file %s.\n",Tape::tapeSaveName.c_str());
-                    /*int result = */remove(Tape::tapeSaveName.c_str());
+                    struct stat stat_buf;
+                    SaveRes = DLG_YES;
+                    if (stat(Tape::tapeSaveName.c_str(), &stat_buf) == 0) {
+                        string title = OSD_TAPE_SAVE[Config::lang];
+                        string msg = OSD_TAPE_SAVE_EXIST[Config::lang];
+                        SaveRes = OSD::msgDialog(title,msg);
+                    }
 
-                    // check if file has been deleted successfully
-                    // if (result != 0) {
-                    //     // print error message
-                    //     printf("File deletion failed\n");
-                    // }
-                    // else {
-                    //     printf("File deleted succesfully\n");
-                    // }            
+                    if (SaveRes == DLG_YES) {
 
-                    // printf("Saving %s header.\n",Tape::tapeSaveName.c_str());
+                        // printf("Removing previuous tap file %s.\n",Tape::tapeSaveName.c_str());
+                        /*int result = */remove(Tape::tapeSaveName.c_str());
+
+                        // check if file has been deleted successfully
+                        // if (result != 0) {
+                        //     // print error message
+                        //     printf("File deletion failed\n");
+                        // }
+                        // else {
+                        //     printf("File deleted succesfully\n");
+                        // }            
+
+                        // printf("Saving %s header.\n",Tape::tapeSaveName.c_str());
+                        
+                        REG_DE--;
+                        regA = 0x00;
+
+                        Tape::Save();
+
+                        REG_PC = 0x555;
                     
-                    REG_DE--;
-                    regA = 0x00;
-
-                    Tape::Save();
-
-                    REG_PC = 0x555;
+                    }
 
                 } else {
 
@@ -4648,13 +4664,17 @@ void Z80::decodeDDFD(RegisterPair& regIXY) {
 
                     // printf("Saving %s block.\n",Tape::tapeSaveName.c_str());
 
-                    REG_DE--;
-                    regIXY.word++;
-                    regA = 0xFF;
+                    if (SaveRes == DLG_YES) {
 
-                    Tape::Save();
+                        REG_DE--;
+                        regIXY.word++;
+                        regA = 0xFF;
 
-                    REG_PC = 0x555;
+                        Tape::Save();
+
+                        REG_PC = 0x555;
+
+                    }
 
                 }
 
@@ -6130,6 +6150,7 @@ void Z80::decodeED(void) {
             ini();
             if (REG_B != 0) {
                 REG_PC = REG_PC - 2;
+                REG_WZ = REG_PC + 1;
                 Z80Ops::addressOnBus(REG_HL - 1, 5);
                 SetAbortedINxR_OTxRFlags();
             }
@@ -6140,6 +6161,7 @@ void Z80::decodeED(void) {
             outi();
             if (REG_B != 0) {
                 REG_PC = REG_PC - 2;
+                REG_WZ = REG_PC + 1;
                 Z80Ops::addressOnBus(REG_BC, 5);
                 SetAbortedINxR_OTxRFlags();
             }
@@ -6175,6 +6197,7 @@ void Z80::decodeED(void) {
             ind();
             if (REG_B != 0) {
                 REG_PC = REG_PC - 2;
+                REG_WZ = REG_PC + 1;
                 Z80Ops::addressOnBus(REG_HL + 1, 5);
                 SetAbortedINxR_OTxRFlags();
             }
@@ -6185,6 +6208,7 @@ void Z80::decodeED(void) {
             outd();
             if (REG_B != 0) {
                 REG_PC = REG_PC - 2;
+                REG_WZ = REG_PC + 1;
                 Z80Ops::addressOnBus(REG_BC, 5);
                 SetAbortedINxR_OTxRFlags();
             }

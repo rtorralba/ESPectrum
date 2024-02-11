@@ -42,7 +42,7 @@ visit https://zxespectrum.speccy.org/contacto
 #define MSG_SAVE_CONFIG "Saving config file"
 #define MSG_VGA_INIT "Initializing VGA"
 // #define EMU_VERSION "       v1.0 "
-#define EMU_VERSION " Dev 281123 "
+#define EMU_VERSION " Dev 121223 "
 
 // Error
 #define ERROR_TITLE "  !!!   ERROR - CLIVE MEDITATION   !!!  "
@@ -75,9 +75,53 @@ static const char *OSD_PAUSE[2] = { OSD_PAUSE_EN,OSD_PAUSE_ES };
 #define OSD_TAPE_SAVE_ERR "ERROR Saving TAP file"
 #define OSD_BETADISK_LOAD_ERR "ERROR Loading Disk file"
 
+#define OSD_TAPE_SAVE_EN "SAVE command"
+#define OSD_TAPE_SAVE_ES "Comando SAVE"
+static const char *OSD_TAPE_SAVE[2] = { OSD_TAPE_SAVE_EN, OSD_TAPE_SAVE_ES };
+
+#define OSD_TAPE_SAVE_EXIST_EN "File exists. Overwrite?"
+#define OSD_TAPE_SAVE_EXIST_ES "El fichero ya existe " "\xA8" "Sobreescribir?"
+static const char *OSD_TAPE_SAVE_EXIST[2] = { OSD_TAPE_SAVE_EXIST_EN, OSD_TAPE_SAVE_EXIST_ES };
+
+#define OSD_PSNA_SAVE_EN "Save snapshot"
+#define OSD_PSNA_SAVE_ES "Guardar snapshot"
+static const char *OSD_PSNA_SAVE[2] = { OSD_PSNA_SAVE_EN, OSD_PSNA_SAVE_ES };
+
+#define OSD_PSNA_EXISTS_EN "Overwrite slot?"
+#define OSD_PSNA_EXISTS_ES "\xA8" "Sobreescribir ranura?"
+static const char *OSD_PSNA_EXISTS[2] = { OSD_PSNA_EXISTS_EN, OSD_PSNA_EXISTS_ES };
+
 #define OSD_TAPE_SELECT_ERR_EN "No TAP selected"
 #define OSD_TAPE_SELECT_ERR_ES "TAP no seleccionado"
 static const char *OSD_TAPE_SELECT_ERR[2] = { OSD_TAPE_SELECT_ERR_EN,OSD_TAPE_SELECT_ERR_ES };
+
+#define OSD_FILE_INDEXING_EN "Indexing"
+#define OSD_FILE_INDEXING_ES "Indexando"
+static const char *OSD_FILE_INDEXING[2] = { OSD_FILE_INDEXING_EN, OSD_FILE_INDEXING_ES };
+
+#define OSD_FILE_INDEXING_EN_1 "  Sorting   "
+#define OSD_FILE_INDEXING_ES_1 "   Ordenando   "
+static const char *OSD_FILE_INDEXING_1[2] = { OSD_FILE_INDEXING_EN_1, OSD_FILE_INDEXING_ES_1 };
+
+#define OSD_FILE_INDEXING_EN_2 "Saving index"
+#define OSD_FILE_INDEXING_ES_2 "Grabando indice"
+static const char *OSD_FILE_INDEXING_2[2] = { OSD_FILE_INDEXING_EN_2, OSD_FILE_INDEXING_ES_2 };
+
+#define OSD_FILE_INDEXING_EN_3 "  Cleaning  "
+#define OSD_FILE_INDEXING_ES_3 "   Limpiando   "
+static const char *OSD_FILE_INDEXING_3[2] = { OSD_FILE_INDEXING_EN_3, OSD_FILE_INDEXING_ES_3 };
+
+#define OSD_FIRMW_UPDATE_EN "Firmware update"
+#define OSD_FIRMW_UPDATE_ES "Actualizar firmware"
+static const char *OSD_FIRMW_UPDATE[2] = { OSD_FIRMW_UPDATE_EN,OSD_FIRMW_UPDATE_ES};
+
+#define OSD_DLG_SURE_EN "Are you sure?"
+#define OSD_DLG_SURE_ES "\xA8" "Desea continuar?"
+static const char *OSD_DLG_SURE[2] = { OSD_DLG_SURE_EN, OSD_DLG_SURE_ES};
+
+#define OSD_FIRMW_EN "Updating firmware"
+#define OSD_FIRMW_ES "Actualizando firmware"
+static const char *OSD_FIRMW[2] = { OSD_FIRMW_EN,OSD_FIRMW_ES};
 
 #define OSD_FIRMW_BEGIN_EN "Erasing destination partition."
 #define OSD_FIRMW_BEGIN_ES "Borrando particion de destino."
@@ -91,6 +135,11 @@ static const char *OSD_FIRMW_WRITE[2] = { OSD_FIRMW_WRITE_EN,OSD_FIRMW_WRITE_ES}
 #define OSD_FIRMW_END_ES "  Completado. Reiniciando.   "
 static const char *OSD_FIRMW_END[2] = { OSD_FIRMW_END_EN,OSD_FIRMW_END_ES};
 
+
+#define OSD_NOFIRMW_ERR_EN "No firmware file found."
+#define OSD_NOFIRMW_ERR_ES "Firmware no encontrado."
+static const char *OSD_NOFIRMW_ERR[2] = { OSD_NOFIRMW_ERR_EN,OSD_NOFIRMW_ERR_ES};
+
 #define OSD_FIRMW_ERR_EN "Problem updating firmware."
 #define OSD_FIRMW_ERR_ES "Error actualizando firmware."
 static const char *OSD_FIRMW_ERR[2] = { OSD_FIRMW_ERR_EN,OSD_FIRMW_ERR_ES};
@@ -103,8 +152,8 @@ static const char *MENU_SNA_TITLE[2] = { MENU_SNA_TITLE_EN,MENU_SNA_TITLE_ES };
 #define MENU_TAP_TITLE_ES "Elija fichero TAP"
 static const char *MENU_TAP_TITLE[2] = { MENU_TAP_TITLE_EN,MENU_TAP_TITLE_ES };
 
-#define MENU_DSK_TITLE_EN "Select disk image"
-#define MENU_DSK_TITLE_ES "Elija imagen de disco"
+#define MENU_DSK_TITLE_EN "Select disk"
+#define MENU_DSK_TITLE_ES "Elija disco"
 static const char *MENU_DSK_TITLE[2] = { MENU_DSK_TITLE_EN,MENU_DSK_TITLE_ES };
 
 #define MENU_SNA_EN \

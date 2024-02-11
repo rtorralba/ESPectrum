@@ -65,9 +65,9 @@ string FileUtils::SNA_Path = "/"; // DISK_SNA_DIR; // Current path on the SD (fo
 string FileUtils::TAP_Path = "/"; // DISK_TAP_DIR; // Current path on the SD (for future folder support)
 string FileUtils::DSK_Path = "/"; // DISK_DSK_DIR; // Current path on the SD (for future folder support)
 DISK_FTYPE FileUtils::fileTypes[3] = {
-    {".sna,.SNA,.z80,.Z80",".s",2,2},
-    {".tap,.TAP",".t",2,2},
-    {".trd,.TRD,.scl,.SCL",".d",2,2}
+    {".sna,.SNA,.z80,.Z80",".s",2,2,0,""},
+    {".tap,.TAP",".t",2,2,0,""},
+    {".trd,.TRD,.scl,.SCL",".d",2,2,0,""}
 };
 
 void FileUtils::initFileSystem() {
@@ -288,12 +288,28 @@ void FileUtils::DirToFile(string fpath, uint8_t ftype) {
     // Remove previous dir file
     remove((fpath + fileTypes[ftype].indexFilename).c_str());
 
+    OSD::progressDialog(OSD_FILE_INDEXING[Config::lang],OSD_FILE_INDEXING_1[Config::lang],0,0);
+
     // Read filenames from medium into vector, sort it, and dump into MAX_FNAMES_PER_CHUNK filenames long files
     int cnt = 0;
     int chunk_cnt = 0;
+    int item_count = 0;
+    int items_processed = 0;
     struct dirent* de;
 
+    // Count items to process
+    rewinddir(dir);
+    while ((de = readdir(dir)) != nullptr) {        
+        if (de->d_type == DT_REG || de->d_type == DT_DIR) {
+            item_count++;
+        }
+    }
+    rewinddir(dir);
+
     unsigned long h = 0, high; // Directory Hash
+
+    OSD::elements = 0;
+    OSD::ndirs = 0;
 
     while ((de = readdir(dir)) != nullptr) {        
         string fname = de->d_name;
@@ -305,10 +321,13 @@ void FileUtils::DirToFile(string fpath, uint8_t ftype) {
                 if ((de->d_type == DT_DIR) || ((fname.size() > 3) && (std::find(filexts.begin(),filexts.end(),fname.substr(fname.size()-4)) != filexts.end()))) {
                     // if (fname[0] == 'A') printf("Fname3: %s\n",fname.c_str());
 
-                    if (de->d_type == DT_DIR)
+                    if (de->d_type == DT_DIR) {
                         filenames.push_back((char(32) + fname).c_str());
-                    else
+                        OSD::ndirs++;
+                    } else {
                         filenames.push_back(fname.c_str());
+                        OSD::elements++;
+                    }
 
                     // Calc hash
                     for (int i = 0; i < fname.length(); i++) {
@@ -326,6 +345,8 @@ void FileUtils::DirToFile(string fpath, uint8_t ftype) {
                         FILE *f = fopen((fpath + fileTypes[ftype].indexFilename + fileName).c_str(), "w");
                         if (f==NULL) {
                             printf("Error opening filelist chunk\n");
+                            // Close progress dialog
+                            OSD::progressDialog("","",0,2);
                             return;
                         }
                         for (int n=0; n < MAX_FNAMES_PER_CHUNK; n++) fputs((filenames[n] + std::string(63 - filenames[n].size(), ' ') + "\n").c_str(),f);
@@ -333,11 +354,17 @@ void FileUtils::DirToFile(string fpath, uint8_t ftype) {
                         filenames.clear();
                         cnt = 0;
                         chunk_cnt++;
+                        items_processed--;
                     }
 
                 }
             }
+
+            items_processed++;
+            OSD::progressDialog("","",(float) 100 / ((float) item_count / (float) items_processed),1);
+
         }
+
     }
 
     // Add previous directory entry if not on root dir
@@ -359,6 +386,8 @@ void FileUtils::DirToFile(string fpath, uint8_t ftype) {
         FILE *f = fopen((fpath + fileTypes[ftype].indexFilename + fileName).c_str(), "w");
         if (f == NULL) {
             printf("Error opening last filelist chunk\n");
+            // Close progress dialog
+            OSD::progressDialog("","",0,2);
             return;
         }
         for (int n=0; n < cnt;n++) fputs((filenames[n] + std::string(63 - filenames[n].size(), ' ') + "\n").c_str(),f);
@@ -369,9 +398,14 @@ void FileUtils::DirToFile(string fpath, uint8_t ftype) {
     std::vector<std::string>().swap(filenames); // free memory
 
     if (chunk_cnt == 0) {
-        if (cnt == 0) return;
+        if (cnt == 0) {
+            // Close progress dialog
+            OSD::progressDialog("","",0,2);
+            return;
+        }
         rename((fpath + fileTypes[ftype].indexFilename + "0").c_str(),(fpath + fileTypes[ftype].indexFilename).c_str());   // Rename unique chunk
     } else {
+        OSD::progressDialog(OSD_FILE_INDEXING[Config::lang],OSD_FILE_INDEXING_2[Config::lang],0,1);
         Mergefiles(fpath, ftype, chunk_cnt);
     }
 
@@ -382,6 +416,9 @@ void FileUtils::DirToFile(string fpath, uint8_t ftype) {
     fputs(to_string(h).c_str(),fout);
     fclose(fout);
     fout = NULL;
+
+    // Close progress dialog
+    OSD::progressDialog("","",0,2);
 
 }
 
@@ -452,18 +489,30 @@ void FileUtils::Mergefiles(string fpath, uint8_t ftype, int chunk_cnt) {
         sprintf(fileName, ".tmp%d", n);
         file1 = fopen((fpath + fileName).c_str(), "r");
 
+        OSD::progressDialog("","",(float) 100 / ((float) chunk_cnt / (float) n),1);
+
+        // printf("chunkcnt: %d n: %d\n",(int) chunk_cnt, (int)n);
+
         n++;
 
         sprintf(fileName, "%d", n);
         file2 = fopen((fpath + fileTypes[ftype].indexFilename + fileName).c_str(), "r");
 
+        // printf("n Opened: %d\n",(int)n);
+
     }
 
+    // printf("Closing file1\n");
+
     fclose(file1);
+
+    // printf("File1 closed\n");
 
     // Rename final chunk
     sprintf(fileName, ".tmp%d", n - 1);
     rename((fpath + fileName).c_str(),(fpath + fileTypes[ftype].indexFilename).c_str());
+
+    OSD::progressDialog(OSD_FILE_INDEXING[Config::lang],OSD_FILE_INDEXING_3[Config::lang],0,1);
 
     // Remove temp files
     for (int n = 0; n <= chunk_cnt; n++) {
@@ -471,6 +520,7 @@ void FileUtils::Mergefiles(string fpath, uint8_t ftype, int chunk_cnt) {
         remove((fpath + fileTypes[ftype].indexFilename + fileName).c_str());
         sprintf(fileName, ".tmp%d", n);
         remove((fpath + fileName).c_str());
+        OSD::progressDialog("","",(float) 100 / ((float) chunk_cnt / (float) n),1);
     }
 
     file1 = NULL;

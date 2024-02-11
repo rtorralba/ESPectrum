@@ -78,6 +78,22 @@ using namespace std;
 
 extern Font Font6x8;
 
+uint8_t OSD::cols;                     // Maximum columns
+uint8_t OSD::mf_rows;                  // File menu maximum rows
+unsigned short OSD::real_rows;      // Real row count
+uint8_t OSD::virtual_rows;             // Virtual maximum rows on screen
+uint16_t OSD::w;                        // Width in pixels
+uint16_t OSD::h;                        // Height in pixels
+uint16_t OSD::x;                        // X vertical position
+uint16_t OSD::y;                        // Y horizontal position
+uint16_t OSD::prev_y[5];                // Y prev. position
+unsigned short OSD::menu_prevopt = 1;
+string OSD::menu;                   // Menu string
+unsigned short OSD::begin_row = 1;      // First real displayed row
+uint8_t OSD::focus = 1;                    // Focused virtual row
+uint8_t OSD::last_focus = 0;               // To check for changes
+unsigned short OSD::last_begin_row = 0; // To check for changes
+
 uint8_t OSD::menu_level = 0;
 bool OSD::menu_saverect = false;
 unsigned short OSD::menu_curopt = 1;
@@ -103,6 +119,36 @@ uint8_t OSD::osdMaxRows() { return (OSD_H - (OSD_MARGIN * 2)) / OSD_FONT_H; }
 uint8_t OSD::osdMaxCols() { return (OSD_W - (OSD_MARGIN * 2)) / OSD_FONT_W; }
 unsigned short OSD::osdInsideX() { return scrAlignCenterX(OSD_W) + OSD_MARGIN; }
 unsigned short OSD::osdInsideY() { return scrAlignCenterY(OSD_H) + OSD_MARGIN; }
+
+DRAM_ATTR static const uint8_t click48[12]={ 0,0x16,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x16,0 };
+
+DRAM_ATTR static const uint8_t click128[116]= { 0x00,0x16,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,
+                                                0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,
+                                                0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,
+                                                0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,
+                                                0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,
+                                                0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,
+                                                0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,0x61,
+                                                0x61,0x61,0x16,0x00
+                                            };
+
+IRAM_ATTR void OSD::click() {
+
+    size_t written;
+
+    pwm_audio_set_volume(ESP_DEFAULT_VOLUME);
+
+    if (Z80Ops::is48) {
+        pwm_audio_write((uint8_t *) click48, 12, &written,  5 / portTICK_PERIOD_MS);
+    } else {
+        pwm_audio_write((uint8_t *) click128, 116, &written, 5 / portTICK_PERIOD_MS);
+    }
+
+    pwm_audio_set_volume(ESPectrum::aud_volume);
+
+    // printf("Written: %d\n",written);
+
+}
 
 void OSD::esp_hard_reset() {
     // RESTART ESP32 (This is the most similar way to hard resetting it)
@@ -133,10 +179,10 @@ void OSD::osdAt(uint8_t row, uint8_t col) {
 void OSD::drawOSD(bool bottom_info) {
     unsigned short x = scrAlignCenterX(OSD_W);
     unsigned short y = scrAlignCenterY(OSD_H);
-    VIDEO::vga.fillRect(x, y, OSD_W, OSD_H, OSD::zxColor(1, 0));
-    VIDEO::vga.rect(x, y, OSD_W, OSD_H, OSD::zxColor(0, 0));
-    VIDEO::vga.rect(x + 1, y + 1, OSD_W - 2, OSD_H - 2, OSD::zxColor(7, 0));
-    VIDEO::vga.setTextColor(OSD::zxColor(0, 0), OSD::zxColor(5, 1));
+    VIDEO::vga.fillRect(x, y, OSD_W, OSD_H, zxColor(1, 0));
+    VIDEO::vga.rect(x, y, OSD_W, OSD_H, zxColor(0, 0));
+    VIDEO::vga.rect(x + 1, y + 1, OSD_W - 2, OSD_H - 2, zxColor(7, 0));
+    VIDEO::vga.setTextColor(zxColor(0, 0), zxColor(5, 1));
     VIDEO::vga.setFont(Font6x8);
     osdHome();
     VIDEO::vga.print(OSD_TITLE);
@@ -165,7 +211,7 @@ void OSD::drawStats() {
         y = 220;
     }
 
-    VIDEO::vga.setTextColor(OSD::zxColor(7, 0), OSD::zxColor(1, 0));
+    VIDEO::vga.setTextColor(zxColor(7, 0), zxColor(1, 0));
     VIDEO::vga.setFont(Font6x8);
     VIDEO::vga.setCursor(x,y);
     VIDEO::vga.print(stats_lin1);
@@ -176,31 +222,38 @@ void OSD::drawStats() {
 
 static bool persistSave(uint8_t slotnumber)
 {
+    struct stat stat_buf;
     char persistfname[sizeof(DISK_PSNA_FILE) + 6];
     char persistfinfo[sizeof(DISK_PSNA_FILE) + 6];    
 
     sprintf(persistfname,DISK_PSNA_FILE "%u.sna",slotnumber);
     sprintf(persistfinfo,DISK_PSNA_FILE "%u.esp",slotnumber);
+    string finfo = FileUtils::MountPoint + DISK_PSNA_DIR + "/" + persistfinfo;
+
+    // Slot isn't void
+    if (stat(finfo.c_str(), &stat_buf) == 0) {
+        string title = OSD_PSNA_SAVE[Config::lang];
+        string msg = OSD_PSNA_EXISTS[Config::lang];
+        uint8_t res = OSD::msgDialog(title,msg);
+        if (res != DLG_YES) return false;
+    }
 
     OSD::osdCenteredMsg(OSD_PSNA_SAVING, LEVEL_INFO, 0);
 
     // Save info file
-    string finfo = FileUtils::MountPoint + DISK_PSNA_DIR + "/" + persistfinfo;
     FILE *f = fopen(finfo.c_str(), "w");
     if (f == NULL) {
+
         printf("Error opening %s\n",persistfinfo);
-        return false;
-    }
-    // Put architecture on info file
-    fputs((Config::getArch() + "\n").c_str(),f);
-    fclose(f);    
 
-    if (!FileSNA::save(FileUtils::MountPoint + DISK_PSNA_DIR + "/" + persistfname)) {
-        OSD::osdCenteredMsg(OSD_PSNA_SAVE_ERR, LEVEL_WARN);
-        return false;
-    }
+    } else {
 
-    // OSD::osdCenteredMsg(OSD_PSNA_SAVED, LEVEL_INFO);
+        fputs((Config::getArch() + "\n").c_str(),f);    // Put architecture on info file
+        fclose(f);    
+
+        if (!FileSNA::save(FileUtils::MountPoint + DISK_PSNA_DIR + "/" + persistfname)) OSD::osdCenteredMsg(OSD_PSNA_SAVE_ERR, LEVEL_WARN);
+    
+    }
 
     return true;
 
@@ -295,8 +348,8 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, uint8_t CTRL) {
             osdCenteredMsg(OSD_PAUSE[Config::lang], LEVEL_INFO, 1000);
 
             while (1) {
-
-                ZXKbdRead();
+                
+                if (ZXKeyb::Exists) ZXKeyb::ZXKbdRead();
 
                 ESPectrum::readKbdJoy();
 
@@ -341,12 +394,15 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, uint8_t CTRL) {
             }
         }
         else if (KeytoESP == fabgl::VK_F4) {
+            // Persist Save
             menu_level = 0;
             menu_curopt = 1;
-            // Persist Save
-            uint8_t opt2 = menuRun(MENU_PERSIST_SAVE[Config::lang]);
-            if (opt2 > 0 && opt2<11) {
-                persistSave(opt2);
+            while (1) {
+                uint8_t opt2 = menuRun(MENU_PERSIST_SAVE[Config::lang]);
+                if (opt2 > 0 && opt2<11) {
+                    if (persistSave(opt2)) return;
+                    menu_curopt = opt2;
+                } else break;
             }
         }
         else if (KeytoESP == fabgl::VK_F5) {
@@ -484,6 +540,7 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, uint8_t CTRL) {
             menu_saverect = false;
             menu_level = 0;
             uint8_t opt = menuRun("ESPectrum " + Config::getArch() + "\n" + MENU_MAIN[Config::lang]);
+            // uint8_t opt = menuRun(Config::getArch() + "\n" + MENU_MAIN[Config::lang]);            
     
             if (opt == 1) {
                 // ***********************************************************************************
@@ -499,7 +556,7 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, uint8_t CTRL) {
                         menu_level = 2;
                         menu_saverect = true;
                         if (sna_mnu == 1) {
-                            string mFile = fileDialog(FileUtils::SNA_Path, MENU_SNA_TITLE[Config::lang],DISK_SNAFILE,30,16);
+                            string mFile = fileDialog(FileUtils::SNA_Path, MENU_SNA_TITLE[Config::lang],DISK_SNAFILE,28,16);
                             if (mFile != "") {
                                 mFile.erase(0, 1);
                                 string fname = FileUtils::MountPoint + "/" + FileUtils::SNA_Path + "/" + mFile;
@@ -561,7 +618,7 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, uint8_t CTRL) {
                         if (tap_num == 1) {
                             // menu_curopt = 1;
                             // Select TAP File
-                            string mFile = fileDialog(FileUtils::TAP_Path, MENU_TAP_TITLE[Config::lang],DISK_TAPFILE,30,16);
+                            string mFile = fileDialog(FileUtils::TAP_Path, MENU_TAP_TITLE[Config::lang],DISK_TAPFILE,28,16);
                             if (mFile != "") {
 
                                 string keySel = mFile.substr(0,1);
@@ -659,7 +716,7 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, uint8_t CTRL) {
                             if (opt2 > 0) {
                                 if (opt2 == 1) {
                                     menu_saverect = true;
-                                    string mFile = fileDialog(FileUtils::DSK_Path, MENU_DSK_TITLE[Config::lang],DISK_DSKFILE,30,16);
+                                    string mFile = fileDialog(FileUtils::DSK_Path, MENU_DSK_TITLE[Config::lang],DISK_DSKFILE,26,15);
                                     if (mFile != "") {
                                         mFile.erase(0, 1);
                                         string fname = FileUtils::MountPoint + "/" + FileUtils::DSK_Path + "/" + mFile;
@@ -740,10 +797,11 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, uint8_t CTRL) {
                     // Options menu
                     uint8_t options_num = menuRun(MENU_OPTIONS[Config::lang]);
                     if (options_num == 1) {
-                        menu_saverect = true;
+                        menu_level = 2;
                         menu_curopt = 1;
+                        menu_saverect = true;
                         while (1) {
-                            menu_level = 2;
+                            // menu_level = 2;
                             // Storage source
                             // string stor_menu = MENU_STORAGE[Config::lang];
                             string stor_menu = Config::lang ? MENU_STORAGE_ES : MENU_STORAGE_EN;
@@ -782,20 +840,6 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, uint8_t CTRL) {
                                         }
                                     }
                                 }
-                                // else 
-                                // if (opt2 == 2) {
-
-                                //     OSD::osdCenteredMsg("Refreshing snap dir", LEVEL_INFO, 0);
-                                //     FileUtils::DirToFile(FileUtils::MountPoint + "/" + FileUtils::SNA_Path, DISK_SNAFILE); // Prepare sna filelist
-
-                                //     OSD::osdCenteredMsg("Refreshing tape dir", LEVEL_INFO, 0);
-                                //     FileUtils::DirToFile(FileUtils::MountPoint + "/" + FileUtils::TAP_Path, DISK_TAPFILE); // Prepare tap filelist
-
-                                //     OSD::osdCenteredMsg("Refreshing disk dir", LEVEL_INFO, 0);
-                                //     FileUtils::DirToFile(FileUtils::MountPoint + "/" + FileUtils::DSK_Path, DISK_DSKFILE); // Prepare dsk filelist
-
-                                //     return;
-                                // }
                                 menu_curopt = opt2;
                                 menu_saverect = false;
                             } else {
@@ -1114,19 +1158,37 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, uint8_t CTRL) {
                             }
                         }
                     } else if (options_num == 7) {
-                        // Open firmware file
-                        FILE *firmware = fopen("/sd/firmware.bin", "rb");
-                        if (firmware == NULL) {
-                            osdCenteredMsg("No firmware file found.", LEVEL_WARN, 2000);
+
+                        menu_level = 2;
+
+                        string title = OSD_FIRMW_UPDATE[Config::lang];
+                        string msg = OSD_DLG_SURE[Config::lang];
+                        uint8_t res = msgDialog(title,msg);
+
+                        if (res == DLG_YES) {
+
+                            // Open firmware file
+                            FILE *firmware = fopen("/sd/firmware.bin", "rb");
+                            if (firmware == NULL) {
+                                osdCenteredMsg(OSD_NOFIRMW_ERR[Config::lang], LEVEL_WARN, 2000);
+                                return;
+                            } else {
+                                esp_err_t res = updateFirmware(firmware);
+                                fclose(firmware);
+                                string errMsg = OSD_FIRMW_ERR[Config::lang];
+                                errMsg += " Code = " + to_string(res);
+                                osdCenteredMsg(errMsg, LEVEL_ERROR, 3000);
+                            }
+
                             return;
+
                         } else {
-                            esp_err_t res = updateFirmware(firmware);
-                            fclose(firmware);
-                            string errMsg = OSD_FIRMW_ERR[Config::lang];
-                            errMsg += " Code = " + to_string(res);
-                            osdCenteredMsg(errMsg, LEVEL_ERROR, 3000);
+
+                            menu_curopt = 7;
+                            menu_saverect = false;
+
                         }
-                        return;
+
                     } else {
                         menu_curopt = 5;
                         break;
@@ -1137,7 +1199,7 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, uint8_t CTRL) {
                 // Help
                 drawOSD(true);
                 osdAt(2, 0);
-                VIDEO::vga.setTextColor(OSD::zxColor(7, 0), OSD::zxColor(1, 0));
+                VIDEO::vga.setTextColor(zxColor(7, 0), zxColor(1, 0));
                 if (ZXKeyb::Exists)
                     VIDEO::vga.print(Config::lang ? OSD_HELP_ES_ZX : OSD_HELP_EN_ZX);
                 else
@@ -1145,7 +1207,7 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, uint8_t CTRL) {
 
                 while (1) {
 
-                    ZXKbdRead();
+                    if (ZXKeyb::Exists) ZXKeyb::ZXKbdRead();
 
                     ESPectrum::readKbdJoy();
 
@@ -1170,7 +1232,7 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, uint8_t CTRL) {
                 // About
                 drawOSD(false);
                 
-                VIDEO::vga.fillRect(Config::aspect_16_9 ? 60 : 40,Config::aspect_16_9 ? 12 : 32,240,50,OSD::zxColor(0, 0));            
+                VIDEO::vga.fillRect(Config::aspect_16_9 ? 60 : 40,Config::aspect_16_9 ? 12 : 32,240,50,zxColor(0, 0));            
 
                 // Decode Logo in EBF8 format
                 uint8_t *logo = (uint8_t *)ESPectrum_logo;
@@ -1185,7 +1247,7 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, uint8_t CTRL) {
 
                 // About Page 1
                 // osdAt(7, 0);
-                VIDEO::vga.setTextColor(OSD::zxColor(7, 0), OSD::zxColor(1, 0));
+                VIDEO::vga.setTextColor(zxColor(7, 0), zxColor(1, 0));
                 // VIDEO::vga.print(Config::lang ? OSD_ABOUT1_ES : OSD_ABOUT1_EN);
                 
                 pos_x = Config::aspect_16_9 ? 66 : 46;
@@ -1231,7 +1293,7 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, uint8_t CTRL) {
                     } else {
                         msgDelay--;
                         if (msgDelay==0) {
-                            VIDEO::vga.fillRect(Config::aspect_16_9 ? 60 : 40,Config::aspect_16_9 ? 64 : 84,240,114,OSD::zxColor(1, 0));
+                            VIDEO::vga.fillRect(Config::aspect_16_9 ? 60 : 40,Config::aspect_16_9 ? 64 : 84,240,114,zxColor(1, 0));
                             osdCol = 0;
                             osdRow  = 0;
                             msgChar = 0;
@@ -1249,7 +1311,7 @@ void OSD::do_OSD(fabgl::VirtualKey KeytoESP, uint8_t CTRL) {
 
                     VIDEO::vga.fillRect(pos_x + ((osdCol + 1) * 6), pos_y + (osdRow * 8), 6,8, cursorCol );
                     
-                    ZXKbdRead();
+                    if (ZXKeyb::Exists) ZXKeyb::ZXKbdRead();
 
                     ESPectrum::readKbdJoy();
 
@@ -1432,18 +1494,18 @@ void OSD::errorPanel(string errormsg) {
     if (Config::slog_on)
         printf((errormsg + "\n").c_str());
 
-    VIDEO::vga.fillRect(x, y, OSD_W, OSD_H, OSD::zxColor(0, 0));
-    VIDEO::vga.rect(x, y, OSD_W, OSD_H, OSD::zxColor(7, 0));
-    VIDEO::vga.rect(x + 1, y + 1, OSD_W - 2, OSD_H - 2, OSD::zxColor(2, 1));
+    VIDEO::vga.fillRect(x, y, OSD_W, OSD_H, zxColor(0, 0));
+    VIDEO::vga.rect(x, y, OSD_W, OSD_H, zxColor(7, 0));
+    VIDEO::vga.rect(x + 1, y + 1, OSD_W - 2, OSD_H - 2, zxColor(2, 1));
     VIDEO::vga.setFont(Font6x8);
     osdHome();
-    VIDEO::vga.setTextColor(OSD::zxColor(7, 1), OSD::zxColor(2, 1));
+    VIDEO::vga.setTextColor(zxColor(7, 1), zxColor(2, 1));
     VIDEO::vga.print(ERROR_TITLE);
     osdAt(2, 0);
-    VIDEO::vga.setTextColor(OSD::zxColor(7, 1), OSD::zxColor(0, 0));
+    VIDEO::vga.setTextColor(zxColor(7, 1), zxColor(0, 0));
     VIDEO::vga.println(errormsg.c_str());
     osdAt(17, 0);
-    VIDEO::vga.setTextColor(OSD::zxColor(7, 1), OSD::zxColor(2, 1));
+    VIDEO::vga.setTextColor(zxColor(7, 1), zxColor(2, 1));
     VIDEO::vga.print(ERROR_BOTTOM);
 }
 
@@ -1468,27 +1530,27 @@ void OSD::osdCenteredMsg(string msg, uint8_t warn_level, uint16_t millispause) {
     unsigned short ink;
     unsigned int j;
 
-    if (msg.length() > (scrW / 6) - 4) msg = msg.substr(0,(scrW / 6) - 4);
+    if (msg.length() > (scrW / 6) - 10) msg = msg.substr(0,(scrW / 6) - 10);
 
     const unsigned short w = (msg.length() + 2) * OSD_FONT_W;
     const unsigned short x = scrAlignCenterX(w);
 
     switch (warn_level) {
     case LEVEL_OK:
-        ink = OSD::zxColor(7, 1);
-        paper = OSD::zxColor(4, 0);
+        ink = zxColor(7, 1);
+        paper = zxColor(4, 0);
         break;
     case LEVEL_ERROR:
-        ink = OSD::zxColor(7, 1);
-        paper = OSD::zxColor(2, 0);
+        ink = zxColor(7, 1);
+        paper = zxColor(2, 0);
         break;
     case LEVEL_WARN:
-        ink = OSD::zxColor(0, 0);
-        paper = OSD::zxColor(6, 0);
+        ink = zxColor(0, 0);
+        paper = zxColor(6, 0);
         break;
     default:
-        ink = OSD::zxColor(7, 0);
-        paper = OSD::zxColor(1, 0);
+        ink = zxColor(7, 0);
+        paper = zxColor(1, 0);
     }
 
     if (millispause > 0) {
@@ -1566,7 +1628,7 @@ void OSD::HWInfo() {
     drawOSD(true);
     osdAt(2, 0);
 
-    VIDEO::vga.setTextColor(OSD::zxColor(7, 0), OSD::zxColor(1, 0));
+    VIDEO::vga.setTextColor(zxColor(7, 0), zxColor(1, 0));
 
     // Get chip information
     esp_chip_info_t chip_info;
@@ -1666,7 +1728,7 @@ void OSD::HWInfo() {
     // Wait for key
     while (1) {
 
-        ZXKbdRead();
+        if (ZXKeyb::Exists) ZXKeyb::ZXKbdRead();
 
         ESPectrum::readKbdJoy();
 
@@ -1718,26 +1780,45 @@ if (target == NULL) {
 // printf("Running partition type %d subtype %d at offset 0x%x.\n", partition->type, partition->subtype, partition->address);
 // printf("Target  partition type %d subtype %d at offset 0x%x.\n", target->type, target->subtype, target->address);
 
-osdCenteredMsg(OSD_FIRMW_BEGIN[Config::lang], LEVEL_INFO,0);
+// osdCenteredMsg(OSD_FIRMW_BEGIN[Config::lang], LEVEL_INFO,0);
+
+
+progressDialog(OSD_FIRMW[Config::lang],OSD_FIRMW_BEGIN[Config::lang],0,0);
+
+// Fake erase progress bar ;D
+delay(100);
+for(int n=0; n <= 100; n += 10) {
+    progressDialog("","",n,1);
+    delay(100);
+}
 
 esp_ota_handle_t ota_handle;
 esp_err_t result = esp_ota_begin(target, OTA_SIZE_UNKNOWN, &ota_handle);
 if (result != ESP_OK) {
+    progressDialog("","",0,2);
     return result;
 }
 
 size_t bytesread;
 uint32_t byteswritten = 0;
 
-osdCenteredMsg(OSD_FIRMW_WRITE[Config::lang], LEVEL_INFO,0);
+// osdCenteredMsg(OSD_FIRMW_WRITE[Config::lang], LEVEL_INFO,0);
+progressDialog(OSD_FIRMW[Config::lang],OSD_FIRMW_WRITE[Config::lang],0,1);
+
+// Get firmware size
+fseek(firmware, 0, SEEK_END);
+long bytesfirmware = ftell(firmware);
+rewind(firmware);
 
 while (1) {
     bytesread = fread(ota_write_data, 1, 0x1000 , firmware);
     result = esp_ota_write(ota_handle,(const void *) ota_write_data, bytesread);
     if (result != ESP_OK) {
+        progressDialog("","",0,2);
         return result;
     }
     byteswritten += bytesread;
+    progressDialog("","",(float) 100 / ((float) bytesfirmware / (float) byteswritten),1);
     // printf("Bytes written: %d\n",byteswritten);
     if (feof(firmware)) break;
 }
@@ -1746,19 +1827,267 @@ result = esp_ota_end(ota_handle);
 if (result != ESP_OK) 
 {
     // printf("esp_ota_end failed, err=0x%x.\n", result);
+    progressDialog("","",0,2);
     return result;
 }
 
 result = esp_ota_set_boot_partition(target);
 if (result != ESP_OK) {
     // printf("esp_ota_set_boot_partition failed, err=0x%x.\n", result);
+    progressDialog("","",0,2);
     return result;
 }
 
-osdCenteredMsg(OSD_FIRMW_END[Config::lang], LEVEL_INFO, 0);
+// osdCenteredMsg(OSD_FIRMW_END[Config::lang], LEVEL_INFO, 0);
+progressDialog(OSD_FIRMW[Config::lang],OSD_FIRMW_END[Config::lang],100,1);
+
 delay(1000);
 
 // Firmware written: reboot
 OSD::esp_hard_reset();
+
+}
+
+void OSD::progressDialog(string title, string msg, int percent, int action) {
+
+    static unsigned short h;
+    static unsigned short y;
+    static unsigned short w;
+    static unsigned short x;
+    static unsigned short progress_x;    
+    static unsigned short progress_y;        
+    static unsigned int j;
+
+    if (action == 0 ) { // SHOW
+
+        h = (OSD_FONT_H * 6) + 2;
+        y = scrAlignCenterY(h);
+
+        if (msg.length() > (scrW / 6) - 4) msg = msg.substr(0,(scrW / 6) - 4);
+        if (title.length() > (scrW / 6) - 4) title = title.substr(0,(scrW / 6) - 4);
+
+        w = (((msg.length() > title.length() + 6 ? msg.length(): title.length() + 6) + 2) * OSD_FONT_W) + 2;
+        x = scrAlignCenterX(w);
+
+        // Save backbuffer data
+        j = SaveRectpos;
+        for (int  m = y; m < y + h; m++) {
+            uint32_t *backbuffer32 = (uint32_t *)(VIDEO::vga.backBuffer[m]);
+            for (int n = x >> 2; n < ((x + w) >> 2) + 1; n++) {
+                VIDEO::SaveRect[SaveRectpos] = backbuffer32[n];
+                SaveRectpos++;
+            }
+        }
+        
+        // printf("SaveRectPos: %04X\n",SaveRectpos << 2);        
+
+        // Set font
+        VIDEO::vga.setFont(Font6x8);
+
+        // Menu border
+        VIDEO::vga.rect(x, y, w, h, zxColor(0, 0));
+
+        VIDEO::vga.fillRect(x + 1, y + 1, w - 2, OSD_FONT_H, zxColor(0,0));
+        VIDEO::vga.fillRect(x + 1, y + 1 + OSD_FONT_H, w - 2, h - OSD_FONT_H - 2, zxColor(7,1));
+
+        // Title
+        VIDEO::vga.setTextColor(zxColor(7, 1), zxColor(0, 0));        
+        VIDEO::vga.setCursor(x + OSD_FONT_W + 1, y + 1);
+        VIDEO::vga.print(title.c_str());
+        
+        // Msg
+        VIDEO::vga.setTextColor(zxColor(0, 0), zxColor(7, 1));        
+        VIDEO::vga.setCursor(scrAlignCenterX(msg.length() * OSD_FONT_W), y + 1 + (OSD_FONT_H * 2));
+        VIDEO::vga.print(msg.c_str());
+
+        // Rainbow
+        unsigned short rb_y = y + 8;
+        unsigned short rb_paint_x = x + w - 30;
+        uint8_t rb_colors[] = {2, 6, 4, 5};
+        for (uint8_t c = 0; c < 4; c++) {
+            for (uint8_t i = 0; i < 5; i++) {
+                VIDEO::vga.line(rb_paint_x + i, rb_y, rb_paint_x + 8 + i, rb_y - 8, zxColor(rb_colors[c], 1));
+            }
+            rb_paint_x += 5;
+        }
+
+        // Progress bar frame
+        progress_x = scrAlignCenterX(72);
+        progress_y = y + (OSD_FONT_H * 4);
+        VIDEO::vga.rect(progress_x, progress_y, 72, OSD_FONT_H + 2, zxColor(0, 0));
+        progress_x++;
+        progress_y++;
+
+    } else if (action == 1 ) { // UPDATE
+
+        // Msg
+        VIDEO::vga.setTextColor(zxColor(0, 0), zxColor(7, 1));        
+        VIDEO::vga.setCursor(scrAlignCenterX(msg.length() * OSD_FONT_W), y + 1 + (OSD_FONT_H * 2));
+        VIDEO::vga.print(msg.c_str());
+
+        // Progress bar
+        int barsize = (70 * percent) / 100;
+        VIDEO::vga.fillRect(progress_x, progress_y, barsize, OSD_FONT_H, zxColor(5,1));
+        VIDEO::vga.fillRect(progress_x + barsize, progress_y, 70 - barsize, OSD_FONT_H, zxColor(7,1));        
+
+    } else if (action == 2) { // CLOSE
+
+        // Restore backbuffer data
+        SaveRectpos = j;
+        for (int  m = y; m < y + h; m++) {
+            uint32_t *backbuffer32 = (uint32_t *)(VIDEO::vga.backBuffer[m]);
+            for (int n = x >> 2; n < ((x + w) >> 2) + 1; n++) {
+                backbuffer32[n] = VIDEO::SaveRect[j];
+                j++;
+            }
+        }
+
+    }
+
+}
+
+uint8_t OSD::msgDialog(string title, string msg) {
+
+    const unsigned short h = (OSD_FONT_H * 6) + 2;
+    const unsigned short y = scrAlignCenterY(h);
+    uint8_t res = DLG_NO;
+
+    if (msg.length() > (scrW / 6) - 4) msg = msg.substr(0,(scrW / 6) - 4);
+    if (title.length() > (scrW / 6) - 4) title = title.substr(0,(scrW / 6) - 4);
+
+    const unsigned short w = (((msg.length() > title.length() + 6 ? msg.length() : title.length() + 6) + 2) * OSD_FONT_W) + 2;
+    const unsigned short x = scrAlignCenterX(w);
+
+    // Save backbuffer data
+    unsigned int j = SaveRectpos;
+    for (int  m = y; m < y + h; m++) {
+        uint32_t *backbuffer32 = (uint32_t *)(VIDEO::vga.backBuffer[m]);
+        for (int n = x >> 2; n < ((x + w) >> 2) + 1; n++) {
+            VIDEO::SaveRect[SaveRectpos] = backbuffer32[n];
+            SaveRectpos++;
+        }
+    }
+    // printf("SaveRectPos: %04X\n",SaveRectpos << 2);    
+
+     // Set font
+    VIDEO::vga.setFont(Font6x8);
+
+    // Menu border
+    VIDEO::vga.rect(x, y, w, h, zxColor(0, 0));
+
+    VIDEO::vga.fillRect(x + 1, y + 1, w - 2, OSD_FONT_H, zxColor(0,0));
+    VIDEO::vga.fillRect(x + 1, y + 1 + OSD_FONT_H, w - 2, h - OSD_FONT_H - 2, zxColor(7,1));
+
+    // Title
+    VIDEO::vga.setTextColor(zxColor(7, 1), zxColor(0, 0));        
+    VIDEO::vga.setCursor(x + OSD_FONT_W + 1, y + 1);
+    VIDEO::vga.print(title.c_str());
+    
+    // Msg
+    VIDEO::vga.setTextColor(zxColor(0, 0), zxColor(7, 1));        
+    VIDEO::vga.setCursor(scrAlignCenterX(msg.length() * OSD_FONT_W), y + 1 + (OSD_FONT_H * 2));
+    VIDEO::vga.print(msg.c_str());
+
+    // Yes
+    VIDEO::vga.setTextColor(zxColor(0, 0), zxColor(7, 1));        
+    VIDEO::vga.setCursor(scrAlignCenterX(6 * OSD_FONT_W) - (w >> 2), y + 1 + (OSD_FONT_H * 4));
+    VIDEO::vga.print(Config::lang ? "  Si  " : " Yes  ");
+
+    // // Ruler
+    // VIDEO::vga.setTextColor(zxColor(0, 0), zxColor(7, 1));        
+    // VIDEO::vga.setCursor(x + 1, y + 1 + (OSD_FONT_H * 3));
+    // VIDEO::vga.print("123456789012345678901234567");
+
+    // No
+    VIDEO::vga.setTextColor(zxColor(0, 1), zxColor(5, 1));
+    VIDEO::vga.setCursor(scrAlignCenterX(6 * OSD_FONT_W) + (w >> 2), y + 1 + (OSD_FONT_H * 4));
+    VIDEO::vga.print("  No  ");
+
+    // Rainbow
+    unsigned short rb_y = y + 8;
+    unsigned short rb_paint_x = x + w - 30;
+    uint8_t rb_colors[] = {2, 6, 4, 5};
+    for (uint8_t c = 0; c < 4; c++) {
+        for (uint8_t i = 0; i < 5; i++) {
+            VIDEO::vga.line(rb_paint_x + i, rb_y, rb_paint_x + 8 + i, rb_y - 8, zxColor(rb_colors[c], 1));
+        }
+        rb_paint_x += 5;
+    }
+
+    // VIDEO::vga.fillRect(x, y, w, h, paper);
+    // // VIDEO::vga.rect(x - 1, y - 1, w + 2, h + 2, ink);
+    // VIDEO::vga.setTextColor(ink, paper);
+    // VIDEO::vga.setFont(Font6x8);
+    // VIDEO::vga.setCursor(x + OSD_FONT_W, y + OSD_FONT_H);
+    // VIDEO::vga.print(msg.c_str());
+    
+    // Keyboard loop
+    fabgl::VirtualKeyItem Menukey;
+    while (1) {
+
+        if (ZXKeyb::Exists) ZXKeyb::ZXKbdRead();
+
+        ESPectrum::readKbdJoy();
+
+        // Process external keyboard
+        if (ESPectrum::PS2Controller.keyboard()->virtualKeyAvailable()) {
+            if (ESPectrum::readKbd(&Menukey)) {
+                if (!Menukey.down) continue;
+
+                if (Menukey.vk == fabgl::VK_LEFT) {
+                    // Yes
+                    VIDEO::vga.setTextColor(zxColor(0, 1), zxColor(5, 1));
+                    VIDEO::vga.setCursor(scrAlignCenterX(6 * OSD_FONT_W) - (w >> 2), y + 1 + (OSD_FONT_H * 4));
+                    VIDEO::vga.print(Config::lang ? "  Si  " : " Yes  ");
+                    // No
+                    VIDEO::vga.setTextColor(zxColor(0, 0), zxColor(7, 1));        
+                    VIDEO::vga.setCursor(scrAlignCenterX(6 * OSD_FONT_W) + (w >> 2), y + 1 + (OSD_FONT_H * 4));
+                    VIDEO::vga.print("  No  ");
+                    click();
+                    res = DLG_YES;
+                } else if (Menukey.vk == fabgl::VK_RIGHT) {
+                    // Yes
+                    VIDEO::vga.setTextColor(zxColor(0, 0), zxColor(7, 1));        
+                    VIDEO::vga.setCursor(scrAlignCenterX(6 * OSD_FONT_W) - (w >> 2), y + 1 + (OSD_FONT_H * 4));
+                    VIDEO::vga.print(Config::lang ? "  Si  " : " Yes  ");
+                    // No
+                    VIDEO::vga.setTextColor(zxColor(0, 1), zxColor(5, 1));
+                    VIDEO::vga.setCursor(scrAlignCenterX(6 * OSD_FONT_W) + (w >> 2), y + 1 + (OSD_FONT_H * 4));
+                    VIDEO::vga.print("  No  ");
+                    click();
+                    res = DLG_NO;
+                } else if (Menukey.vk == fabgl::VK_RETURN || Menukey.vk == fabgl::VK_SPACE) {
+                    break;
+                } else if (Menukey.vk == fabgl::VK_ESCAPE) {
+                    res = DLG_CANCEL;
+                    break;
+                }
+            }
+
+        }
+
+        vTaskDelay(5 / portTICK_PERIOD_MS);
+
+    }
+
+    click();
+
+    // Restore backbuffer data
+    SaveRectpos = j;
+    for (int  m = y; m < y + h; m++) {
+        uint32_t *backbuffer32 = (uint32_t *)(VIDEO::vga.backBuffer[m]);
+        for (int n = x >> 2; n < ((x + w) >> 2) + 1; n++) {
+            backbuffer32[n] = VIDEO::SaveRect[j];
+            j++;
+        }
+    }
+
+    return res;
+
+}
+
+string OSD::inputBox(int x, int y, string text) {
+
+return text;
 
 }

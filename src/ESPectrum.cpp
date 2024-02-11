@@ -62,6 +62,7 @@ visit https://zxespectrum.speccy.org/contacto
 #include "esp_timer.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
+// #include "bootloader_random.h"
 #endif
 
 using namespace std;
@@ -323,8 +324,18 @@ void ESPectrum::bootKeyboard() {
 //=======================================================================================
 // TaskHandle_t ESPectrum::loopTaskHandle;
 
+// uint32_t ESPectrum::sessid;
+
 void ESPectrum::setup() 
 {
+
+    // //=======================================================================================
+    // // GENERATE SESSION ID
+    // //=======================================================================================
+    // bootloader_random_enable();
+    // sessid = esp_random();
+    // printf("SESSION ID: %08X\n",(unsigned int)sessid);
+    // bootloader_random_disable();    
 
     #ifndef ESP32_SDL2_WRAPPER
 
@@ -548,14 +559,20 @@ void ESPectrum::setup()
         FileUtils::SNA_Path = Config::SNA_Path;
         FileUtils::fileTypes[DISK_SNAFILE].begin_row = Config::SNA_begin_row;
         FileUtils::fileTypes[DISK_SNAFILE].focus = Config::SNA_focus;
+        FileUtils::fileTypes[DISK_SNAFILE].fdMode = Config::SNA_fdMode;
+        FileUtils::fileTypes[DISK_SNAFILE].fileSearch = Config::SNA_fileSearch;
 
         FileUtils::TAP_Path = Config::TAP_Path;
         FileUtils::fileTypes[DISK_TAPFILE].begin_row = Config::TAP_begin_row;
         FileUtils::fileTypes[DISK_TAPFILE].focus = Config::TAP_focus;
+        FileUtils::fileTypes[DISK_TAPFILE].fdMode = Config::TAP_fdMode;
+        FileUtils::fileTypes[DISK_TAPFILE].fileSearch = Config::TAP_fileSearch;
 
         FileUtils::DSK_Path = Config::DSK_Path;
         FileUtils::fileTypes[DISK_DSKFILE].begin_row = Config::DSK_begin_row;
         FileUtils::fileTypes[DISK_DSKFILE].focus = Config::DSK_focus;
+        FileUtils::fileTypes[DISK_DSKFILE].fdMode = Config::DSK_fdMode;
+        FileUtils::fileTypes[DISK_DSKFILE].fileSearch = Config::DSK_fileSearch;
 
         LoadSnapshot(Config::ram_file,"");
 
@@ -629,7 +646,7 @@ void ESPectrum::reset()
     lastaudioBit=0;
 
     // Set samples per frame and AY_emu flag depending on arch
-    int prevOverSamples = overSamplesPerFrame;
+    int prevAudio_freq = Audio_freq;
     if (arch == "48K") {
         overSamplesPerFrame=ESP_AUDIO_OVERSAMPLES_48;
         samplesPerFrame=ESP_AUDIO_SAMPLES_48; 
@@ -650,10 +667,15 @@ void ESPectrum::reset()
     ESPoffset = 0;
 
     // Readjust output pwmaudio frequency if needed
-    if (overSamplesPerFrame != prevOverSamples) {
+    if (prevAudio_freq != Audio_freq) {
         
         // printf("Resetting pwmaudio to freq: %d\n",Audio_freq);
-        pwm_audio_set_sample_rate(Audio_freq);
+
+        esp_err_t res;
+        res = pwm_audio_set_sample_rate(Audio_freq);
+        if (res != ESP_OK) {
+            printf("Can't set sample rate\n");
+        }
 
         // pwm_audio_stop();
         // delay(100); // Maybe this fix random sound lost ?
