@@ -4,7 +4,7 @@ ESPectrum, a Sinclair ZX Spectrum emulator for Espressif ESP32 SoC
 
 WD1793 EMULATION, adapted from Mark Woodmass SpecEmu's implementation
 
-Copyright (c) 2023 Víctor Iborra [Eremus] and David Crespo [dcrespo3d]
+Copyright (c) 2023, 2024 Víctor Iborra [Eremus] and 2023 David Crespo [dcrespo3d]
 https://github.com/EremusOne/ZX-ESPectrum-IDF
 
 Based on ZX-ESPectrum-Wiimote
@@ -30,7 +30,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-To Contact the dev team you can write to zxespectrum@gmail.com or 
+To Contact the dev team you can write to zxespectrum@gmail.com or
 visit https://zxespectrum.speccy.org/contacto
 
 */
@@ -54,13 +54,12 @@ void WD1793::Init() {
             fclose(Drive[i].DiskFile);
             Drive[i].DiskFile = NULL;
         }
-
         Drive[i].IsSCLFile = false;
         Drive[i].FName.clear();
-
-        sclConverted=false;
-
+        Drive[i].Available = false;
     }
+
+    sclConverted=false;
 
     EnterIdle();
 
@@ -105,7 +104,7 @@ void WD1793::ExecuteCommand(unsigned char wdCmd) {
 
     }
 
-    // if ((StatusReg & STATUS_BUSY) != 0) return;
+    if ((StatusReg & STATUS_BUSY) != 0) return; // This solves stuttering in UNREAL and boot menu in ENL96_3.SCL and ENL96_4.SCL but maybe brokes something somewhere. Needs more testing and study.
 
     // set drive ready status bit
     StatusReg = ~((unsigned char)DriveReady) << 7;
@@ -121,11 +120,11 @@ void WD1793::ExecuteCommand(unsigned char wdCmd) {
 
             StatusType = WDStatusType::TYPE_1;
             if(  (wdCmd & 16) == 0 ) {
-                // printf("    Command: Restore, Input value: %d\n",(int)wdCmd);                              
+                // printf("    Command: Restore, Input value: %d\n",(int)wdCmd);
                 CurrentCmd = WDCommandType::WD_RESTORE;
                 TrackReg = 0;
             } else {
-                // printf("    Command: Seek, Input value: %d\n",(int)wdCmd);                              
+                // printf("    Command: Seek, Input value: %d\n",(int)wdCmd);
                 CurrentCmd = WDCommandType::WD_SEEK;
                 TrackReg = DataReg;
                 if(TrackReg > (MAX_TRACKS - 1)) TrackReg = MAX_TRACKS - 1;
@@ -160,7 +159,7 @@ void WD1793::ExecuteCommand(unsigned char wdCmd) {
             break;
 
         case 3: // Step-Out
-            
+
             // printf("    Execute command: Step Out\n");
             StatusType = WDStatusType::TYPE_1;
             SetINTRQ();
@@ -253,7 +252,7 @@ void WD1793::ExecuteCommand(unsigned char wdCmd) {
                 EnterIdle();
 
             } else {
-                
+
                 // printf("    Execute command: Write track\n");
 
                 CurrentCmd = WDCommandType::WD_WRITETRACK;
@@ -297,7 +296,7 @@ void WD1793::ReadRawOneSectorData(unsigned char UnitNum,  unsigned char C,  unsi
         int seekptr = ( ( C * Drive[UnitNum].Heads + H ) * Drive[UnitNum].Sectors * Drive[UnitNum].SectorSize ) + ( S * Drive[UnitNum].SectorSize );
         // printf("SeekPtr no Offset: %d\n", seekptr);
         seekptr += Drive[UnitNum].sclDataOffset;
-        // printf("SeekPtr Offset: %d\n",seekptr);        
+        // printf("SeekPtr Offset: %d\n",seekptr);
         fseek(Drive[UnitNum].DiskFile, seekptr, SEEK_SET);
         fread(DataBuffer,1,Drive[UnitNum].SectorSize,Drive[UnitNum].DiskFile);
 
@@ -384,7 +383,7 @@ void WD1793::EjectDisks() {
 
 }
 
-void WD1793::EjectDisk(unsigned char UnitNum) 
+void WD1793::EjectDisk(unsigned char UnitNum)
 {
 
     if(Drive[UnitNum].Available) {
@@ -401,10 +400,11 @@ void WD1793::EjectDisk(unsigned char UnitNum)
 
 }
 
-bool WD1793::InsertDisk(unsigned char UnitNum, string Filename) {       
+bool WD1793::InsertDisk(unsigned char UnitNum, string Filename) {
 
-    uint8_t diskType;   
-    char magic[9];     
+    uint8_t diskType;
+
+    // char magic[9];
 
     // close any open disk in this unit
     EjectDisk(UnitNum);
@@ -418,10 +418,14 @@ bool WD1793::InsertDisk(unsigned char UnitNum, string Filename) {
         Drive[UnitNum].SectorSize = 256;
         Drive[UnitNum].FName = Filename;
 
-        fgets(magic,9, Drive[UnitNum].DiskFile);
+        char magic[8];
+
+        fread(&magic, 1, 8, Drive[UnitNum].DiskFile);
+        // fgets(magic,9, Drive[UnitNum].DiskFile);
         // printf("%s\n",magic);
-        
-        if (strcmp(magic,"SINCLAIR") == 0) {
+
+        if (strncmp(magic,"SINCLAIR",8) == 0) {
+        // if (strcmp(magic,"SINCLAIR") == 0) {
             // SCL file
             // printf("SCL disk loaded\n");
             Drive[UnitNum].IsSCLFile=true;
@@ -433,7 +437,7 @@ bool WD1793::InsertDisk(unsigned char UnitNum, string Filename) {
             Drive[UnitNum].IsSCLFile=false;
             Drive[UnitNum].sclDataOffset = 0;
 
-            fseek(Drive[UnitNum].DiskFile,2048 + 227,SEEK_SET);    
+            fseek(Drive[UnitNum].DiskFile,2048 + 227,SEEK_SET);
             fread(&diskType,1,1,Drive[UnitNum].DiskFile);
 
         }
@@ -467,7 +471,7 @@ bool WD1793::InsertDisk(unsigned char UnitNum, string Filename) {
 
 }
 
-bool WD1793::DiskInserted(unsigned char UnitNum) {   
+bool WD1793::DiskInserted(unsigned char UnitNum) {
     return Drive[UnitNum].Available;
 }
 
@@ -501,7 +505,7 @@ unsigned char WD1793::ReadTrackReg() {
     unsigned char result;
 
     result = TrackReg;
-    
+
     return result;
 
 }
@@ -513,7 +517,7 @@ void WD1793::WriteTrackReg(unsigned char newTrack) {
 }
 
 unsigned char WD1793::ReadSectorReg() {
-    
+
     unsigned char result;
     result = SectorReg;
     return result;
@@ -521,13 +525,13 @@ unsigned char WD1793::ReadSectorReg() {
 }
 
 void WD1793::WriteSectorReg(unsigned char newSector) {
-    
+
     SectorReg = newSector;
 
 }
 
 unsigned char WD1793::ReadDataReg() {
-    
+
     unsigned char result;
 
     result = DataReg;
@@ -574,7 +578,7 @@ unsigned char WD1793::ReadDataReg() {
                 result = DataReg;
                 DataPosn++;
                 DataCount--;
-                
+
                 if(DataCount == 0) {
                     // data transfer finished
                     ClearDRQ();
@@ -582,12 +586,12 @@ unsigned char WD1793::ReadDataReg() {
                     EnterIdle();
                     return result;
                 }
-                
+
                 OverRunTest = true;
                 OverRunCount = 64;
 
     }
-    
+
     return result;
 
 }
@@ -628,7 +632,7 @@ void WD1793::WriteDataReg(unsigned char newData) {
 }
 
 unsigned char WD1793::ReadSystemReg() {
-    
+
 unsigned char result;
 
 if(OverRunTest) {
@@ -699,7 +703,7 @@ void WD1793::SCLtoTRD(unsigned char* track0, unsigned char UnitNum) {
             fread(&data,1,1,Drive[UnitNum].DiskFile);
             track0[n + j] = data;
         }
-        
+
         fread(&data,1,1,Drive[UnitNum].DiskFile); // Filelenght
         track0[n + 13] = data;
 
@@ -711,7 +715,7 @@ void WD1793::SCLtoTRD(unsigned char* track0, unsigned char UnitNum) {
         int newStartTrack = (startTrack * 16 + startSector + data) / 16;
         startSector = (startTrack * 16 + startSector + data) - 16 * newStartTrack;
         startTrack = newStartTrack;
-    
+
     }
 
     // Populate Disk Specification.
@@ -731,5 +735,5 @@ void WD1793::SCLtoTRD(unsigned char* track0, unsigned char UnitNum) {
     for (int i = 0; i < 8; i++) track0[2293 + i] = diskNameArray[i];
 
     Drive[UnitNum].sclDataOffset =  (9 + (numberOfFiles * 14)) - 4096;
-    
+
 }

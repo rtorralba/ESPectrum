@@ -2,7 +2,7 @@
 
 ESPectrum, a Sinclair ZX Spectrum emulator for Espressif ESP32 SoC
 
-Copyright (c) 2023 Víctor Iborra [Eremus] and David Crespo [dcrespo3d]
+Copyright (c) 2023, 2024 Víctor Iborra [Eremus] and 2023 David Crespo [dcrespo3d]
 https://github.com/EremusOne/ZX-ESPectrum-IDF
 
 Based on ZX-ESPectrum-Wiimote
@@ -73,9 +73,13 @@ public:
     static string   romSet;
     static string   romSet48;
     static string   romSet128;
+    static string   romSetTK90X;    
+    static string   romSetTK95;        
     static string   pref_arch;
     static string   pref_romSet_48;
     static string   pref_romSet_128;
+    static string   pref_romSet_TK90X;
+    static string   pref_romSet_TK95;    
     static string   ram_file;
     static string   last_ram_file;
     static uint8_t  esp32rev;
@@ -115,6 +119,23 @@ public:
     static uint16_t DSK_focus;
     static uint8_t  DSK_fdMode;
     static string   DSK_fileSearch;
+
+    static uint8_t scanlines;
+    static uint8_t render;    
+
+    static bool TABasfire1; 
+
+    static bool StartMsg;  
+
+    static uint8_t port254default; // For TK90X v1 ROM -> 0xbf: Spanish, 0x3f: Portuguese      
+
+    static uint8_t ALUTK; // TK ALU -> 0 -> Ferranti, 1 -> Microdigital 50hz, 2 -> Microdigital 60hz
+
+    static uint8_t DiskCtrl; // 0 -> None, 1 -> Betadisk
+
+    static bool TimeMachine; 
+
+    static int8_t volume;
 
 };
 

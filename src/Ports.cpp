@@ -2,7 +2,7 @@
 
 ESPectrum, a Sinclair ZX Spectrum emulator for Espressif ESP32 SoC
 
-Copyright (c) 2023 Víctor Iborra [Eremus] and David Crespo [dcrespo3d]
+Copyright (c) 2023, 2024 Víctor Iborra [Eremus] and 2023 David Crespo [dcrespo3d]
 https://github.com/EremusOne/ZX-ESPectrum-IDF
 
 Based on ZX-ESPectrum-Wiimote
@@ -41,7 +41,7 @@ visit https://zxespectrum.speccy.org/contacto
 #include "Video.h"
 #include "AySound.h"
 #include "Tape.h"
-#include "CPU.h"
+#include "cpuESP.h"
 #include "wd1793.h"
 
 // #pragma GCC optimize("O3")
@@ -65,37 +65,112 @@ uint8_t (*Ports::getFloatBusData)() = &Ports::getFloatBusData48;
 
 uint8_t Ports::getFloatBusData48() {
 
+    // unsigned int currentTstates = CPU::tstates;
+
+	// unsigned int line = (currentTstates / 224) - 64;
+	// if (line >= 192) return 0xFF;
+
+	// unsigned char halfpix = (CPU::tstates % 224) - 3;
+    // if ((halfpix >= 125) || (halfpix & 0x04)) return 0xFF;
+
+    //int hpoffset = (halfpix >> 2) + ((halfpix >> 1) & 0x01);
+    // if (halfpix & 0x01) return(VIDEO::grmem[VIDEO::offAtt[line] + hpoffset]);
+    // return(VIDEO::grmem[VIDEO::offBmp[line] + hpoffset]);
+
+	uint32_t line = CPU::tstates / 224;
+    if (line < 64 || line >= 256) return 0xFF;
+
+	uint8_t halfpix = CPU::tstates % 224;
+    if (halfpix & 0x80) return 0xFF;
+    halfpix -= 3;
+    if (halfpix & 0x04) return 0xFF;
+
+    line -= 64;
+    return (VIDEO::grmem[(halfpix & 0x01 ? VIDEO::offAtt[line] : VIDEO::offBmp[line]) + (halfpix >> 2) + ((halfpix >> 1) & 0x01)]);
+
+}
+
+uint8_t Ports::getFloatBusDataTK() {
+
     unsigned int currentTstates = CPU::tstates;
 
-	unsigned int line = (currentTstates / 224) - 64;
+	unsigned int line = (currentTstates / 228) - (Config::ALUTK == 1 ? 64 : 38);
 	if (line >= 192) return 0xFF;
 
-	unsigned char halfpix = (currentTstates % 224) - 3;
+	unsigned char halfpix = (currentTstates % 228) - 99;
 	if ((halfpix >= 125) || (halfpix & 0x04)) return 0xFF;
 
-    int hpoffset = (halfpix >> 2) + ((halfpix >> 1) & 0x01);;
-    
-    if (halfpix & 0x01) return(VIDEO::grmem[VIDEO::offAtt[line] + hpoffset]);
+    // int hpoffset = (halfpix >> 2) + ((halfpix >> 1) & 0x01);
+    // if (halfpix & 0x01) return(VIDEO::grmem[VIDEO::offAtt[line] + hpoffset]);
+    // return(VIDEO::grmem[VIDEO::offBmp[line] + hpoffset]);
 
-    return(VIDEO::grmem[VIDEO::offBmp[line] + hpoffset]);
+    return (VIDEO::grmem[(halfpix & 0x01 ? VIDEO::offAtt[line] : VIDEO::offBmp[line]) + (halfpix >> 2) + ((halfpix >> 1) & 0x01)]);
 
 }
 
 uint8_t Ports::getFloatBusData128() {
 
-    unsigned int currentTstates = CPU::tstates - 1;
+    // unsigned int currentTstates = CPU::tstates - 1;
 
-	unsigned int line = (currentTstates / 228) - 63;
-	if (line >= 192) return 0xFF;
+	// unsigned int line = (currentTstates / 228) - 63;
+	// if (line >= 192) return 0xFF;
 
-	unsigned char halfpix = currentTstates % 228;
-	if ((halfpix >= 128) || (halfpix & 0x04)) return 0xFF;
+	// unsigned char halfpix = currentTstates % 228;
+	// if ((halfpix >= 128) || (halfpix & 0x04)) return 0xFF;
 
-    int hpoffset = (halfpix >> 2) + ((halfpix >> 1) & 0x01);;
-    
-    if (halfpix & 0x01) return(VIDEO::grmem[VIDEO::offAtt[line] + hpoffset]);
+    // int hpoffset = (halfpix >> 2) + ((halfpix >> 1) & 0x01);
+    // if (halfpix & 0x01) return(VIDEO::grmem[VIDEO::offAtt[line] + hpoffset]);
+    // return(VIDEO::grmem[VIDEO::offBmp[line] + hpoffset]);
 
-    return(VIDEO::grmem[VIDEO::offBmp[line] + hpoffset]);
+    uint32_t currentTstates = CPU::tstates - 1;
+
+	uint32_t line = currentTstates / 228;
+    if (line < 63 || line >= 255) return 0xFF;
+
+	uint8_t halfpix = currentTstates % 228;
+	if (halfpix & 0x84) return 0xFF;
+
+    line -= 63;
+    return (VIDEO::grmem[(halfpix & 0x01 ? VIDEO::offAtt[line] : VIDEO::offBmp[line]) + (halfpix >> 2) + ((halfpix >> 1) & 0x01)]);
+
+}
+
+const uint8_t contention2[8] = {6, 6, 5, 4, 3, 2, 1, 0};
+const uint8_t contention3[129] = {
+    6,  6,  12, 12, 11, 10, 9,  8,  7,  6,  12, 12, 11, 10, 9,  8,  7,  6,  12,
+    12, 11, 10, 9,  8,  7,  6,  12, 12, 11, 10, 9,  8,  7,  6,  12, 12, 11, 10,
+    9,  8,  7,  6,  12, 12, 11, 10, 9,  8,  7,  6,  12, 12, 11, 10, 9,  8,  7,
+    6,  12, 12, 11, 10, 9,  8,  7,  6,  12, 12, 11, 10, 9,  8,  7,  6,  12, 12,
+    11, 10, 9,  8,  7,  6,  12, 12, 11, 10, 9,  8,  7,  6,  12, 12, 11, 10, 9,
+    8,  7,  6,  12, 12, 11, 10, 9,  8,  7,  6,  12, 12, 11, 10, 9,  8,  7,  6,
+    12, 12, 11, 10, 9,  8,  7,  6,  6,  6,  5,  4,  3,  2,  1};
+
+uint8_t tkIOcon(uint16_t a) {
+
+    uint32_t t = (CPU::tstates % 228) - 93;
+	uint32_t l = (CPU::tstates / 228) - (Config::ALUTK == 1 ? 64 : 38);
+
+    if (t >= 228) {
+        t -= 228;
+        l++;
+        if (l >= (Config::ALUTK == 1 ? 312 : 262)) l = 0;
+    }
+
+    if (l < 192) {
+        if ((a & 0xc000) == 0x4000) {
+            if (t < 129) {
+                return contention3[t];
+            }
+        } else {
+            if (a & 0x1)
+                return 0;
+            else if (t < 128) {
+                return contention2[t & 07];
+            }
+        }
+    }
+
+    return 0;
 
 }
 
@@ -109,33 +184,45 @@ IRAM_ATTR uint8_t Ports::input(uint16_t address) {
     // ULA PORT    
     if ((address & 0x0001) == 0) {
 
-        VIDEO::Draw(3, true);   // I/O Contention (Late)
+        if (Config::arch[0] == 'T' && Config::ALUTK > 0) {
+            VIDEO::Draw( 3 + tkIOcon(address), false);
+        } else {
+            VIDEO::Draw(3, !Z80Ops::isPentagon);   // I/O Contention (Late)
+        }
 
-        // The default port value is 0xBF.
-        data = 0xbf;
+        data = Config::port254default; // For TK90X spanish and rest of machines default port value is 0xBF. For TK90X portuguese is 0x3f.
 
         uint8_t portHigh = ~(address >> 8) & 0xff;
         for (int row = 0, mask = 0x01; row < 8; row++, mask <<= 1) {
-            if ((portHigh & mask) != 0) {
+            if ((portHigh & mask) != 0)
                 data &= port[row];
-            }
         }
 
+        // ** ESPectrum **
         if (Tape::tapeStatus==TAPE_LOADING) {
-            Tape::TAP_Read();
-            bitWrite(data,6,Tape::tapeEarBit);            
+            Tape::Read();
+            bitWrite(data,6,Tape::tapeEarBit);
         } else {
-            // Issue 2 behaviour only on Spectrum 48K
-    		if ((Z80Ops::is48) && (Config::Issue2)) {
+    		if ((Z80Ops::is48) && (Config::Issue2)) // Issue 2 behaviour only on Spectrum 48K
 				if (port254 & 0x18) data |= 0x40;
-			} else {
+			else
 				if (port254 & 0x10) data |= 0x40;
-			}
 		}
+
+        // ** RVM **
+        // if (Tape::tapeStatus==TAPE_LOADING) Tape::Read();
+        // if ((Z80Ops::is48) && (Config::Issue2)) // Issue 2 behaviour only on Spectrum 48K
+        //     if (port254 & 0x18) data |= 0x40;
+        // else
+        //     if (port254 & 0x10) data |= 0x40;
+        // if (Tape::tapeEarBit) data ^= 0x40;
 
     } else {
 
-        ioContentionLate(MemESP::ramContended[rambank]);
+        if (Config::arch[0] == 'T' && Config::ALUTK > 0)
+            VIDEO::Draw( 3 + tkIOcon(address), false);
+        else
+            ioContentionLate(MemESP::ramContended[rambank]);
 
         // The default port value is 0xFF.
         data = 0xff;
@@ -199,19 +286,20 @@ IRAM_ATTR uint8_t Ports::input(uint16_t address) {
                 // //  0x7ffd, el valor leído es reescrito en el puerto 0x7ffd.
                 // //  http://www.speccy.org/foro/viewtopic.php?f=8&t=2374
                 if (!MemESP::pagingLock) {
+
                     MemESP::pagingLock = bitRead(data, 5);
-                    MemESP::bankLatch = data & 0x7;
-                    MemESP::ramCurrent[3] = MemESP::ram[MemESP::bankLatch];
-                    MemESP::ramContended[3] = MemESP::bankLatch & 0x01 ? true: false;
+
+                    if (MemESP::bankLatch != (data & 0x7)) {
+                        MemESP::bankLatch = data & 0x7;
+                        MemESP::ramCurrent[3] = MemESP::ram[MemESP::bankLatch];
+                        MemESP::ramContended[3] = MemESP::bankLatch & 0x01 ? true: false;
+                    }
+
                     if (MemESP::videoLatch != bitRead(data, 3)) {
                         MemESP::videoLatch = bitRead(data, 3);
-                        // This, if not using the ptime128 draw version, fixs ptime and ptime128
-                        if (((address & 0x0001) != 0) && (MemESP::ramContended[rambank])) {
-                            VIDEO::Draw(2, false);
-                            CPU::tstates -= 2;
-                        }
                         VIDEO::grmem = MemESP::videoLatch ? MemESP::ram[7] : MemESP::ram[5];
                     }
+                    
                     MemESP::romLatch = bitRead(data, 4);
                     bitWrite(MemESP::romInUse, 0, MemESP::romLatch);
                     MemESP::ramCurrent[0] = MemESP::rom[MemESP::romInUse];            
@@ -241,12 +329,23 @@ IRAM_ATTR void Ports::output(uint16_t address, uint8_t data) {
 
         // Border color
         if (VIDEO::borderColor != data & 0x07) {
+            
+            VIDEO::brdChange = true;
+            
+            if (!Z80Ops::isPentagon) 
+                if (Config::arch[0] == 'T' && Config::ALUTK > 0)
+                    VIDEO::Draw(tkIOcon(address),false);
+                else            
+                    VIDEO::Draw(0,true); // Seems not needed in Pentagon
+
+            VIDEO::DrawBorder();
+
             VIDEO::borderColor = data & 0x07;
-            if (!Z80Ops::isPentagon) VIDEO::Draw(0,true); // Seems not needed in Pentagon
             VIDEO::brd = VIDEO::border32[VIDEO::borderColor];
+
         }
     
-        if (ESPectrum::ESP_delay) {
+        if (ESPectrum::ESP_delay) { // Disable beeper on turbo mode
 
             if (Config::tape_player)
                 Audiobit = Tape::tapeEarBit ? 255 : 0; // For tape player mode
@@ -271,13 +370,19 @@ IRAM_ATTR void Ports::output(uint16_t address, uint8_t data) {
                 AySound::setRegisterData(data);
             }
 
-            VIDEO::Draw(3, true);   // I/O Contention (Late)
+            if (Config::arch[0] == 'T' && Config::ALUTK > 0)
+                VIDEO::Draw( 3 + tkIOcon(address), false);
+            else
+                VIDEO::Draw(3, !Z80Ops::isPentagon);   // I/O Contention (Late)
             
             return;
 
         }
 
-        VIDEO::Draw(3, true);   // I/O Contention (Late)
+        if (Config::arch[0] == 'T' && Config::ALUTK > 0)
+            VIDEO::Draw( 3 + tkIOcon(address), false);
+        else
+            VIDEO::Draw(3, !Z80Ops::isPentagon);   // I/O Contention (Late)
 
     } else {
 
@@ -291,7 +396,10 @@ IRAM_ATTR void Ports::output(uint16_t address, uint8_t data) {
                 AySound::setRegisterData(data);
             }
 
-            ioContentionLate(MemESP::ramContended[rambank]);
+            if (Config::arch[0] == 'T' && Config::ALUTK > 0)
+                VIDEO::Draw( 3 + tkIOcon(address), false);
+            else
+                ioContentionLate(MemESP::ramContended[rambank]);
 
             return;
 
@@ -327,8 +435,10 @@ IRAM_ATTR void Ports::output(uint16_t address, uint8_t data) {
 
         }
 
-        ioContentionLate(MemESP::ramContended[rambank]);
-
+        if (Config::arch[0] == 'T' && Config::ALUTK > 0)
+            VIDEO::Draw( 3 + tkIOcon(address), false);
+        else
+            ioContentionLate(MemESP::ramContended[rambank]);
 
     }
 
@@ -339,9 +449,14 @@ IRAM_ATTR void Ports::output(uint16_t address, uint8_t data) {
 
             MemESP::pagingLock = bitRead(data, 5);
 
-            MemESP::bankLatch = data & 0x7;
-            MemESP::ramCurrent[3] = MemESP::ram[MemESP::bankLatch];
-            MemESP::ramContended[3] = Z80Ops::isPentagon ? false : (MemESP::bankLatch & 0x01 ? true: false);
+            if (MemESP::bankLatch != (data & 0x7)) {
+                MemESP::bankLatch = data & 0x7;
+                #ifdef ESPECTRUM_PSRAM
+                MemESP::tm_bank_chg[MemESP::bankLatch] = true; // Bank selected. Mark for time machine
+                #endif
+                MemESP::ramCurrent[3] = MemESP::ram[MemESP::bankLatch];
+                MemESP::ramContended[3] = Z80Ops::isPentagon ? false : (MemESP::bankLatch & 0x01 ? true: false);
+            }
 
             MemESP::romLatch = bitRead(data, 4);
             bitWrite(MemESP::romInUse, 0, MemESP::romLatch);
@@ -349,16 +464,9 @@ IRAM_ATTR void Ports::output(uint16_t address, uint8_t data) {
 
             if (MemESP::videoLatch != bitRead(data, 3)) {
                 MemESP::videoLatch = bitRead(data, 3);
-                
-                // Seems not needed in Pentagon
-                // This, if not using the ptime128 draw version, fixs ptime and ptime128
-                if (!Z80Ops::isPentagon) {
-                    if (((address & 0x0001) != 0) && (MemESP::ramContended[rambank])) {
-                        VIDEO::Draw(2, false);
-                        CPU::tstates -= 2;
-                    }
-                }
-
+                #ifdef ESPECTRUM_PSRAM
+                MemESP::tm_bank_chg[MemESP::videoLatch ? 7 : 5] = true; // Bank selected. Mark for time machine
+                #endif
                 VIDEO::grmem = MemESP::videoLatch ? MemESP::ram[7] : MemESP::ram[5];
             }
 

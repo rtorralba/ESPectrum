@@ -2,7 +2,7 @@
 
 ESPectrum, a Sinclair ZX Spectrum emulator for Espressif ESP32 SoC
 
-Copyright (c) 2023 Víctor Iborra [Eremus] and David Crespo [dcrespo3d]
+Copyright (c) 2023, 2024 Víctor Iborra [Eremus] and 2023 David Crespo [dcrespo3d]
 https://github.com/EremusOne/ZX-ESPectrum-IDF
 
 Based on ZX-ESPectrum-Wiimote
@@ -35,15 +35,6 @@ visit https://zxespectrum.speccy.org/contacto
 
 #ifndef ESPectrum_hardconfig_h
 #define ESPectrum_hardconfig_h
-
-///////////////////////////////////////////////////////////////////////////////
-// Video output switch
-//
-// #define NOVIDEO for disabling video output.
-// Useful for Testing & CPU / Video timing
-///////////////////////////////////////////////////////////////////////////////
-
-// #define NO_VIDEO
 
 ///////////////////////////////////////////////////////////////////////////////
 // LOG_DEBUG_TIMING generates simple timing log messages to console every second.

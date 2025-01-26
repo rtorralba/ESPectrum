@@ -2,7 +2,7 @@
 
 ESPectrum, a Sinclair ZX Spectrum emulator for Espressif ESP32 SoC
 
-Copyright (c) 2023 Víctor Iborra [Eremus] and David Crespo [dcrespo3d]
+Copyright (c) 2023, 2024 Víctor Iborra [Eremus] and 2023 David Crespo [dcrespo3d]
 https://github.com/EremusOne/ZX-ESPectrum-IDF
 
 Based on ZX-ESPectrum-Wiimote
@@ -39,10 +39,13 @@ visit https://zxespectrum.speccy.org/contacto
 #include "FileUtils.h"
 #include "messages.h"
 #include "Config.h"
+#include "OSDMain.h"
 #include "esp_vfs.h"
 
 void CaptureToBmp()
 {
+
+    if (!FileUtils::isSDReady()) return;
 
     char filename[] = "ESP00000.bmp";
 
@@ -55,7 +58,7 @@ void CaptureToBmp()
 
     // framebuffer size
     int w = VIDEO::vga.xres;
-    int h = VIDEO::vga.yres;
+    int h = OSD::scrH;
 
     // number of uint32_t words
     int count = w >> 2;
@@ -75,6 +78,7 @@ void CaptureToBmp()
     struct stat stat_buf;
     if (stat(scrdir.c_str(), &stat_buf) != 0) {
         if (mkdir(scrdir.c_str(),0775) != 0) {
+            delete[] linebuf;
             printf("Capture BMP: problem creating capture dir\n");
             return;
         }
@@ -82,6 +86,7 @@ void CaptureToBmp()
     
     DIR* dir = opendir(scrdir.c_str());
     if (dir == NULL) {
+        delete[] linebuf;
         printf("Capture BMP: problem accessing capture dir\n");
         return;
     }

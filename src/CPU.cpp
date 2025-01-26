@@ -2,7 +2,7 @@
 
 ESPectrum, a Sinclair ZX Spectrum emulator for Espressif ESP32 SoC
 
-Copyright (c) 2023 Víctor Iborra [Eremus] and David Crespo [dcrespo3d]
+Copyright (c) 2023, 2024 Víctor Iborra [Eremus] and 2023 David Crespo [dcrespo3d]
 https://github.com/EremusOne/ZX-ESPectrum-IDF
 
 Based on ZX-ESPectrum-Wiimote
@@ -33,7 +33,7 @@ visit https://zxespectrum.speccy.org/contacto
 
 */
 
-#include "CPU.h"
+#include "cpuESP.h"
 #include "ESPectrum.h"
 #include "MemESP.h"
 #include "Ports.h"
@@ -50,6 +50,7 @@ uint32_t CPU::statesInFrame = 0;
 uint8_t CPU::latetiming = 0;
 uint8_t CPU::IntStart = 0;
 uint8_t CPU::IntEnd = 0;
+uint32_t CPU::stFrame = 0;
 
 bool Z80Ops::is48;
 bool Z80Ops::is128;
@@ -69,30 +70,74 @@ void CPU::reset() {
         Z80Ops::is128 = false;
         Z80Ops::isPentagon = false;
         statesInFrame = TSTATES_PER_FRAME_48;
-        CPU::IntStart = INT_START48;
-        CPU::IntEnd = INT_END48 + CPU::latetiming;
-        // Set emulation loop sync target
-        ESPectrum::target = MICROS_PER_FRAME_48;
+        IntStart = INT_START48;
+        IntEnd = INT_END48 + CPU::latetiming;
+        ESPectrum::target[0] = MICROS_PER_FRAME_48;
+        ESPectrum::target[1] = MICROS_PER_FRAME_48;
+        ESPectrum::target[2] = MICROS_PER_FRAME_48_125SPEED;
+        ESPectrum::target[3] = MICROS_PER_FRAME_48_150SPEED;                        
+
+    } else if (Config::arch == "TK90X" || Config::arch == "TK95") {
+
+        Z80Ops::is48 = true;
+        Z80Ops::is128 = false;
+        Z80Ops::isPentagon = false;
+
+        switch (Config::ALUTK) {
+        case 0:
+            Ports::getFloatBusData = &Ports::getFloatBusData48;
+            statesInFrame = TSTATES_PER_FRAME_48;
+            ESPectrum::target[0] = MICROS_PER_FRAME_48;
+            ESPectrum::target[1] = MICROS_PER_FRAME_48;
+            ESPectrum::target[2] = MICROS_PER_FRAME_48_125SPEED;
+            ESPectrum::target[3] = MICROS_PER_FRAME_48_150SPEED;                        
+            break;
+        case 1:
+            Ports::getFloatBusData = &Ports::getFloatBusDataTK;
+            statesInFrame = TSTATES_PER_FRAME_TK_50;
+            ESPectrum::target[0] = MICROS_PER_FRAME_TK_50;
+            ESPectrum::target[1] = MICROS_PER_FRAME_TK_50;
+            ESPectrum::target[2] = MICROS_PER_FRAME_TK_50_125SPEED;
+            ESPectrum::target[3] = MICROS_PER_FRAME_TK_50_150SPEED;                        
+            break;
+        case 2:
+            Ports::getFloatBusData = &Ports::getFloatBusDataTK;
+            statesInFrame = TSTATES_PER_FRAME_TK_60;
+            ESPectrum::target[0] = MICROS_PER_FRAME_TK_60;
+            ESPectrum::target[1] = MICROS_PER_FRAME_TK_60;
+            ESPectrum::target[2] = MICROS_PER_FRAME_TK_60_125SPEED;
+            ESPectrum::target[3] = MICROS_PER_FRAME_TK_60_150SPEED;
+        }
+
+        IntStart = INT_STARTTK;
+        IntEnd = INT_ENDTK + CPU::latetiming;
+
     } else if (Config::arch == "128K") {
         Ports::getFloatBusData = &Ports::getFloatBusData128;
         Z80Ops::is48 = false;
         Z80Ops::is128 = true;
         Z80Ops::isPentagon = false;
         statesInFrame = TSTATES_PER_FRAME_128;
-        CPU::IntStart = INT_START128;
-        CPU::IntEnd = INT_END128 + CPU::latetiming;
-        // Set emulation loop sync target
-        ESPectrum::target = MICROS_PER_FRAME_128;
+        IntStart = INT_START128;
+        IntEnd = INT_END128 + CPU::latetiming;
+        ESPectrum::target[0] = MICROS_PER_FRAME_128;
+        ESPectrum::target[1] = MICROS_PER_FRAME_128;
+        ESPectrum::target[2] = MICROS_PER_FRAME_128_125SPEED;
+        ESPectrum::target[3] = MICROS_PER_FRAME_128_150SPEED;                        
     } else if (Config::arch == "Pentagon") {
         Z80Ops::is48 = false;
         Z80Ops::is128 = false;
         Z80Ops::isPentagon = true;
         statesInFrame = TSTATES_PER_FRAME_PENTAGON;
-        CPU::IntStart = INT_START_PENTAGON;
-        CPU::IntEnd = INT_END_PENTAGON + CPU::latetiming;
-        // Set emulation loop sync target
-        ESPectrum::target = MICROS_PER_FRAME_PENTAGON;
+        IntStart = INT_START_PENTAGON;
+        IntEnd = INT_END_PENTAGON + CPU::latetiming;
+        ESPectrum::target[0] = MICROS_PER_FRAME_PENTAGON;
+        ESPectrum::target[1] = MICROS_PER_FRAME_PENTAGON;
+        ESPectrum::target[2] = MICROS_PER_FRAME_PENTAGON_125SPEED;
+        ESPectrum::target[3] = MICROS_PER_FRAME_PENTAGON_150SPEED;
     }
+
+    stFrame = statesInFrame - IntEnd;
 
     tstates = 0;
     global_tstates = 0;
@@ -110,20 +155,21 @@ IRAM_ATTR void CPU::loop() {
     }
 
     while (tstates < IntEnd) Z80::execute();
-    
-    uint32_t stFrame = statesInFrame - IntEnd;
-    while (tstates < stFrame) Z80::exec_nocheck();
+
+    if (!Z80::isHalted()) {
+        stFrame = statesInFrame - IntEnd;
+        Z80::exec_nocheck();
+        if (stFrame == 0) FlushOnHalt();
+    } else {
+        FlushOnHalt();
+    }
 
     while (tstates < statesInFrame) Z80::execute();
-
-    if (tstates & 0xFF000000) FlushOnHalt(); // If we're halted flush screen and update registers as needed
+    
+    VIDEO::EndFrame();
 
     global_tstates += statesInFrame; // increase global Tstates
     tstates -= statesInFrame;
-
-    #ifndef NO_VIDEO
-    VIDEO::EndFrame();
-    #endif
 
 }
 
@@ -131,36 +177,42 @@ IRAM_ATTR void CPU::loop() {
 
 IRAM_ATTR void CPU::FlushOnHalt() {
         
-    tstates &= 0x00FFFFFF;
+    uint32_t stEnd = statesInFrame - IntEnd;    
 
     uint8_t page = Z80::getRegPC() >> 14;
     if (MemESP::ramContended[page]) {
 
-        uint32_t stFrame = statesInFrame - latetiming;
-        while (tstates < stFrame ) {
-            VIDEO::Draw(4,true);
+        while (tstates < stEnd ) {
+            VIDEO::Draw_Opcode(true);
             Z80::incRegR(1);
         }
 
     } else {
 
-        uint32_t pre_tstates = tstates;
+        if (VIDEO::snow_toggle) {
 
-        // Flush the rest of frame
-        while (VIDEO::Draw != &VIDEO::Blank)
-            VIDEO::Draw(VIDEO::tStatesPerLine, false);
+            // ULA perfect cycle & snow effect use this code
+            while (tstates < stEnd ) {
+                VIDEO::Draw_Opcode(false);
+                Z80::incRegR(1);
+            }
 
-        tstates = pre_tstates;
-        
-        pre_tstates += latetiming;
-        uint32_t incr = (statesInFrame - pre_tstates) >> 2;
-        if (pre_tstates & 0x03) incr++;
-        tstates += (incr << 2);
-        Z80::incRegR(incr & 0x000000FF);
+        } else {
+
+            // Flush the rest of frame
+            uint32_t pre_tstates = tstates;
+            while (VIDEO::Draw != &VIDEO::Blank)
+                VIDEO::Draw(VIDEO::tStatesPerLine, false);
+            tstates = pre_tstates;
+
+            uint32_t incr = (stEnd - pre_tstates) >> 2;
+            if (pre_tstates & 0x03) incr++;
+            tstates += (incr << 2);
+            Z80::incRegR(incr & 0x000000FF);
+
+        }
 
     }
-
-    Z80::checkINT();        
 
 }
 
@@ -177,17 +229,28 @@ IRAM_ATTR uint8_t Z80Ops::peek8(uint16_t address) {
 
 // Write byte to RAM
 IRAM_ATTR void Z80Ops::poke8(uint16_t address, uint8_t value) {
+
     uint8_t page = address >> 14;
+
+    if (page == 0) {
+        VIDEO::Draw(3, false);
+        return;
+    }
+
     VIDEO::Draw(3, MemESP::ramContended[page]);
-    if (page != 0) MemESP::ramCurrent[page][address & 0x3fff] = value;
+    MemESP::ramCurrent[page][address & 0x3fff] = value;
+
 }
 
 // Read word from RAM
 IRAM_ATTR uint16_t Z80Ops::peek16(uint16_t address) {
 
     uint8_t page = address >> 14;
-
+    // uint16_t addrinpage = address & 0x3fff;
+    // if (addrinpage < 0x3fff) {    // Check if address is between two different pages
     if (page == ((address + 1) >> 14)) {    // Check if address is between two different pages
+
+        // uint8_t page = address >> 14;
 
         if (MemESP::ramContended[page]) {
             VIDEO::Draw(3, true);
@@ -196,6 +259,8 @@ IRAM_ATTR uint16_t Z80Ops::peek16(uint16_t address) {
             VIDEO::Draw(6, false);
 
         return ((MemESP::ramCurrent[page][(address & 0x3fff) + 1] << 8) | MemESP::ramCurrent[page][address & 0x3fff]);
+
+        // return (MemESP::ramCurrent[page][addrinpage + 1] << 8) | MemESP::ramCurrent[page][addrinpage];
 
     } else {
 
@@ -212,8 +277,14 @@ IRAM_ATTR uint16_t Z80Ops::peek16(uint16_t address) {
 IRAM_ATTR void Z80Ops::poke16(uint16_t address, RegisterPair word) {
 
     uint8_t page = address >> 14;
+    uint16_t page_addr = address & 0x3fff;
 
-    if (page == ((address + 1) >> 14)) {    // Check if address is between two different pages
+    if (page_addr < 0x3fff) {    // Check if address is between two different pages    
+
+        if (page == 0) {
+            VIDEO::Draw(6, false);
+            return;
+        }
 
         if (MemESP::ramContended[page]) {
             VIDEO::Draw(3, true);
@@ -221,10 +292,8 @@ IRAM_ATTR void Z80Ops::poke16(uint16_t address, RegisterPair word) {
         } else
             VIDEO::Draw(6, false);
 
-        if (page != 0) {
-            MemESP::ramCurrent[page][address & 0x3fff] = word.byte8.lo;
-            MemESP::ramCurrent[page][(address & 0x3fff) + 1] = word.byte8.hi;
-        }
+        MemESP::ramCurrent[page][page_addr] = word.byte8.lo;
+        MemESP::ramCurrent[page][page_addr + 1] = word.byte8.hi;
 
     } else {
 
@@ -236,7 +305,7 @@ IRAM_ATTR void Z80Ops::poke16(uint16_t address, RegisterPair word) {
 
 }
 
-/* Put an address on bus lasting 'tstates' cycles */
+// Put an address on bus lasting 'tstates' cycles
 IRAM_ATTR void Z80Ops::addressOnBus(uint16_t address, int32_t wstates) {
     if (MemESP::ramContended[address >> 14]) {
         for (int idx = 0; idx < wstates; idx++)
@@ -245,7 +314,7 @@ IRAM_ATTR void Z80Ops::addressOnBus(uint16_t address, int32_t wstates) {
         VIDEO::Draw(wstates, false);
 }
 
-/* Callback to know when the INT signal is active */
+// Callback to know when the INT signal is active
 IRAM_ATTR bool Z80Ops::isActiveINT(void) {
     int tmp = CPU::tstates + CPU::latetiming;
     if (tmp >= CPU::statesInFrame) tmp -= CPU::statesInFrame;
