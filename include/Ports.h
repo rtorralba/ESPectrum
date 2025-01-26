@@ -2,7 +2,7 @@
 
 ESPectrum, a Sinclair ZX Spectrum emulator for Espressif ESP32 SoC
 
-Copyright (c) 2023 Víctor Iborra [Eremus] and David Crespo [dcrespo3d]
+Copyright (c) 2023, 2024 Víctor Iborra [Eremus] and 2023 David Crespo [dcrespo3d]
 https://github.com/EremusOne/ZX-ESPectrum-IDF
 
 Based on ZX-ESPectrum-Wiimote
@@ -28,7 +28,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-To Contact the dev team you can write to zxespectrum@gmail.com or 
+To Contact the dev team you can write to zxespectrum@gmail.com or
 visit https://zxespectrum.speccy.org/contacto
 
 */
@@ -49,7 +49,12 @@ public:
 
     static uint8_t (*getFloatBusData)();
     static uint8_t getFloatBusData48();
-    static uint8_t getFloatBusData128();    
+    static uint8_t getFloatBusDataTK();
+    static uint8_t getFloatBusData128();
+    static uint8_t getFloatBusDataPentagon();
+    static uint8_t getFloatBusData2A3();
+
+    static uint8_t LastOutTo1FFD;
 
 private:
 

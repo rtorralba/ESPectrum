@@ -2,7 +2,7 @@
 
 ESPectrum, a Sinclair ZX Spectrum emulator for Espressif ESP32 SoC
 
-Copyright (c) 2023 Víctor Iborra [Eremus] and David Crespo [dcrespo3d]
+Copyright (c) 2023, 2024 Víctor Iborra [Eremus] and 2023 David Crespo [dcrespo3d]
 https://github.com/EremusOne/ZX-ESPectrum-IDF
 
 Based on ZX-ESPectrum-Wiimote
@@ -28,7 +28,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-To Contact the dev team you can write to zxespectrum@gmail.com or 
+To Contact the dev team you can write to zxespectrum@gmail.com or
 visit https://zxespectrum.speccy.org/contacto
 
 */
@@ -38,6 +38,9 @@ visit https://zxespectrum.speccy.org/contacto
 
 #include <inttypes.h>
 
+#define ZXKDBREAD_MODEINTERACTIVE 0
+#define ZXKDBREAD_MODEINPUT 1
+
 class ZXKeyb {
 
 public:
@@ -45,9 +48,10 @@ public:
     static void setup();    // setup pins for physical keyboard
     static void process();  // process physical keyboard
     static void ZXKbdRead();
+    static void ZXKbdRead(uint8_t mode);
 
     static uint8_t ZXcols[8];
-    static bool Exists;
+    static uint8_t Exists;
 
 private:
 
